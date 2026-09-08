@@ -588,8 +588,7 @@
             </div>
             <div class="setting-card">
               <h3>app</h3>
-              <p>Install navi radio as a standalone app. Requires a secure context (https or localhost) + Chromium.</p>
-              <div class="setting-row"><span id="install-status">checking install state…</span><button class="btn accent" id="install-btn" disabled>install navi radio webapp</button></div>
+              <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
               <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.3 · standalone-ready</span></div>
             </div>
             <div class="setting-card">
@@ -1465,14 +1464,12 @@
     resizeVisualizer(); requestAnimationFrame(drawVisualizer);
     restoreSession(); updateMusicDirUI(); renderMusic(); restoreMusicDir(); searchRadio();
 
-    /* PWA — service worker (needs http(s); inert on file://) */
-    if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW failed:", e));
-      });
+    /* PWA — service worker */
+    if ("serviceWorker" in navigator && window.isSecureContext) {
+      navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW failed:", e));
     }
 
-    /* PWA — install prompt */
+    /* PWA — install flow */
     let deferredInstall = null;
     const installBtn = $("install-btn"), installStatus = $("install-status");
     function isStandalone() {
@@ -1481,21 +1478,17 @@
     function updateInstallUI() {
       if (!installBtn) return;
       if (isStandalone()) {
-        installStatus.textContent = "installed ✓ running standalone";
+        installStatus.textContent = "installed ✓";
         installBtn.textContent = "✓ installed";
         installBtn.disabled = true;
       } else if (deferredInstall) {
         installStatus.textContent = "ready to install";
         installBtn.textContent = "install navi radio webapp";
         installBtn.disabled = false;
-      } else if (location.protocol === "file:") {
-        installStatus.textContent = "serve over http(s) to install";
-        installBtn.textContent = "install navi radio webapp";
-        installBtn.disabled = true;
       } else {
-        installStatus.textContent = "use browser menu → install";
+        installStatus.textContent = "checking…";
         installBtn.textContent = "install navi radio webapp";
-        installBtn.disabled = true;
+        installBtn.disabled = false;
       }
     }
     window.addEventListener("beforeinstallprompt", (e) => {
@@ -1509,11 +1502,13 @@
       toast("navi radio <b>installed</b>");
     });
     if (installBtn) installBtn.addEventListener("click", async () => {
-      if (!deferredInstall) return;
-      deferredInstall.prompt();
-      try { await deferredInstall.userChoice; } catch {}
-      deferredInstall = null;
-      updateInstallUI();
+      if (isStandalone()) return;
+      if (deferredInstall) {
+        deferredInstall.prompt();
+        try { await deferredInstall.userChoice; } catch {}
+        deferredInstall = null;
+        updateInstallUI();
+      }
     });
     try { window.matchMedia("(display-mode: standalone)").addEventListener("change", updateInstallUI); } catch {}
     updateInstallUI();

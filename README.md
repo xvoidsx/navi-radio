@@ -1,7 +1,7 @@
 # navi-radio
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/7f7b775c-86a4-4eca-b895-02015109515d" />
 
-**navi-radio** is a beautiful player for your favorite internet radio stations and your local music collection.
+**navi radio** is a beautiful player for your favorite internet radio stations and your local music collection.
 
 It's a webapp that ships by default in [navi](https://github.com/xvoidsx/navi) and is also coming soon to the web, so you can install it on any of your devices.
 

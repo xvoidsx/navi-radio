@@ -1,4 +1,4 @@
-# navi-radio
+# navi radio
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/7f7b775c-86a4-4eca-b895-02015109515d" />
 
 **navi radio** is a beautiful player for your favorite internet radio stations and your local music collection.

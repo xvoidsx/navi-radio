@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>navi radio</title>
+  <meta name="description" content="navi radio — default radio + local music webapp for the navi linux distro." />
+  <meta name="theme-color" content="#000000" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <style>
     :root {
       /* nightshadeNeon — true palette */
@@ -579,6 +585,12 @@
                 <div class="swatch" style="background:#fff">#fff</div>
                 <div class="swatch" style="background:#000;color:#fff;border-color:#333">#000</div>
               </div>
+            </div>
+            <div class="setting-card">
+              <h3>app</h3>
+              <p>Install navi radio as a standalone app. Requires a secure context (https or localhost) + Chromium.</p>
+              <div class="setting-row"><span id="install-status">checking install state…</span><button class="btn accent" id="install-btn" disabled>install navi radio webapp</button></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.3 · standalone-ready</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -1452,6 +1464,59 @@
     applySettings(); updateMuteUI(); updateRepeatUI(); renderFavorites(); renderHistory(); renderPlaylists();
     resizeVisualizer(); requestAnimationFrame(drawVisualizer);
     restoreSession(); updateMusicDirUI(); renderMusic(); restoreMusicDir(); searchRadio();
+
+    /* PWA — service worker (needs http(s); inert on file://) */
+    if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW failed:", e));
+      });
+    }
+
+    /* PWA — install prompt */
+    let deferredInstall = null;
+    const installBtn = $("install-btn"), installStatus = $("install-status");
+    function isStandalone() {
+      return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    }
+    function updateInstallUI() {
+      if (!installBtn) return;
+      if (isStandalone()) {
+        installStatus.textContent = "installed ✓ running standalone";
+        installBtn.textContent = "✓ installed";
+        installBtn.disabled = true;
+      } else if (deferredInstall) {
+        installStatus.textContent = "ready to install";
+        installBtn.textContent = "install navi radio webapp";
+        installBtn.disabled = false;
+      } else if (location.protocol === "file:") {
+        installStatus.textContent = "serve over http(s) to install";
+        installBtn.textContent = "install navi radio webapp";
+        installBtn.disabled = true;
+      } else {
+        installStatus.textContent = "use browser menu → install";
+        installBtn.textContent = "install navi radio webapp";
+        installBtn.disabled = true;
+      }
+    }
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstall = e;
+      updateInstallUI();
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredInstall = null;
+      updateInstallUI();
+      toast("navi radio <b>installed</b>");
+    });
+    if (installBtn) installBtn.addEventListener("click", async () => {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      try { await deferredInstall.userChoice; } catch {}
+      deferredInstall = null;
+      updateInstallUI();
+    });
+    try { window.matchMedia("(display-mode: standalone)").addEventListener("change", updateInstallUI); } catch {}
+    updateInstallUI();
   </script>
 </body>
 </html>

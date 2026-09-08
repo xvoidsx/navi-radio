@@ -389,6 +389,61 @@
     .modal h2 { margin: 0 0 12px; font-size: 12px; font-weight: normal; letter-spacing: 0.1em; }
     .modal h2::before { content: "$ "; color: var(--neon-green); }
 
+    /* ------------------------------------------------------------
+       Unified search overlay + music now-playing hero
+       ------------------------------------------------------------ */
+    .search-overlay {
+      position: fixed; z-index: 150; top: var(--topbar-height); left: var(--sidebar-width); right: 0;
+      display: none; justify-content: center; padding: 14px 16px 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.92), rgba(0,0,0,0.55) 80%, transparent);
+      pointer-events: none;
+    }
+    .search-overlay.open { display: flex; }
+    .search-card {
+      width: min(560px, 100%); pointer-events: auto;
+      border: 1px solid var(--border-bright); background: rgba(0,0,0,0.95);
+      box-shadow: 0 0 40px rgba(57,255,20,0.12), 0 0 40px rgba(255,16,240,0.10);
+    }
+    .search-card input {
+      width: 100%; padding: 12px 14px; font-size: 14px;
+      border: 0; border-bottom: 1px solid var(--border); outline: 0;
+      background: transparent; color: var(--text);
+    }
+    .search-card input::placeholder { color: var(--dim); }
+    .search-results { max-height: 46vh; overflow-y: auto; padding: 6px; }
+    .search-group { margin: 6px 4px 4px; color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.13em; }
+    .search-group::before { content: "$ "; color: var(--neon-green); }
+    .search-row {
+      width: 100%; display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 8px; align-items: center;
+      padding: 9px 10px; border: 0; background: transparent; color: var(--text);
+      text-align: left; cursor: pointer; border-radius: 3px;
+    }
+    .search-row:hover { background: rgba(57,255,20,0.07); }
+    .search-row .ic { color: var(--neon-pink); font-size: 12px; text-align: center; }
+    .search-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .search-row .sb { color: var(--dim); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    .search-hint { padding: 8px 14px 10px; color: var(--dim); font-size: 10px; }
+    .search-hint b { color: var(--muted); font-weight: normal; }
+
+    .music-now {
+      display: grid; grid-template-columns: 64px minmax(0,1fr) auto; gap: 14px; align-items: center;
+      border: 1px solid var(--border); background: rgba(0,0,0,0.6);
+      padding: 12px 14px; margin-bottom: 14px;
+    }
+    .music-now.playing { border-color: var(--border-bright); box-shadow: 0 0 18px rgba(57,255,20,0.08); }
+    .music-now .art {
+      width: 64px; height: 64px; display: grid; place-items: center; font-size: 28px; flex: none;
+      border: 1px solid var(--border-pink); background: radial-gradient(circle at center, rgba(255,16,240,0.10), rgba(0,0,0,0.85) 65%);
+      text-shadow: 0 0 12px rgba(255,16,240,0.7);
+    }
+    .music-now .t { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .music-now .a { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+    .music-now .m { font-size: 9px; color: var(--dim); margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .music-now .m b { color: var(--neon-green); font-weight: normal; }
+    .music-now .actions { display: flex; gap: 6px; }
+    .track-row.flash { animation: rowflash 1.2s ease; }
+    @keyframes rowflash { 0%, 40% { background: rgba(57,255,20,0.16); } 100% { background: transparent; } }
+
     @media (max-width: 1100px) {
       :root { --sidebar-width: 64px; --right-width: 0px; }
       .brand { justify-content: center; padding: 0; }
@@ -449,10 +504,19 @@
       <div class="topbar-right">
         <div class="status" id="status">$ READY</div>
         <div class="clock" id="clock">00:00:00</div>
+        <button class="icon-btn" id="search-button" title="search stations + local music (/)">⌕</button>
         <button class="icon-btn" id="viz-toggle" title="toggle visualizer">≋</button>
         <button class="icon-btn" id="settings-button" title="settings">⚙</button>
       </div>
     </header>
+
+    <div class="search-overlay" id="search-overlay">
+      <div class="search-card">
+        <input id="unified-search" type="search" placeholder="search stations + local tunes..." autocomplete="off" />
+        <div class="search-results" id="unified-results"></div>
+        <div class="search-hint" id="unified-hint"><b>⏎</b> searches the radio directory · <b>esc</b> closes</div>
+      </div>
+    </div>
 
     <main class="main">
       <div class="content">
@@ -500,6 +564,19 @@
         <!-- MUSIC VIEW -->
         <section class="view" id="view-music">
           <div class="panel-title">local music <span class="count" id="music-count">0 files</span></div>
+          <div class="music-now" id="music-now">
+            <div class="art" id="mnow-art">∅</div>
+            <div style="min-width:0">
+              <div class="t" id="mnow-title">nothing playing</div>
+              <div class="a" id="mnow-artist">pick a track below</div>
+              <div class="m" id="mnow-meta">—</div>
+            </div>
+            <div class="actions">
+              <button class="btn accent" id="mnow-play" title="play / pause">▶</button>
+              <button class="btn" id="mnow-next" title="next track">⏭</button>
+              <button class="btn" id="mnow-locate" title="scroll to current track">⦿</button>
+            </div>
+          </div>
           <div class="toolbar">
             <button class="btn accent" id="choose-music">+ select ~/Music</button>
             <button class="btn" id="rescan-music" style="display:none" title="re-scan saved folder">⟳ rescan</button>
@@ -884,6 +961,7 @@
           navigator.mediaSession.setActionHandler("previoustrack", previousTrack); navigator.mediaSession.setActionHandler("nexttrack", nextTrack);
         } catch {}
       }
+      renderMusicNow();
     }
 
     /* Progress / volume / transport */
@@ -933,6 +1011,7 @@
         else { img.style.display = "none"; logo.style.display = ""; }
       }
       const cb = $("copy-url-btn"); cb.disabled = !(currentType === "radio" ? (currentItem?.url_resolved || currentItem?.url) : audio.src);
+      renderMusicNow();
     }
     $("now-fav-btn").addEventListener("click", () => { if (currentType === "radio" && currentItem) { toggleFavorite(currentItem); setNowMetaForRadio(currentItem); } });
     function setNowMetaForRadio(st) {
@@ -955,6 +1034,47 @@
       });
       bitrateLive.textContent = "";
     }
+
+    /* Music now-playing hero (mirrors radio hero so local playback is visible here) */
+    function renderMusicNow() {
+      const box = $("music-now"); if (!box) return;
+      const playing = !audio.paused;
+      const isLocal = currentType === "local" && currentItem;
+      box.classList.toggle("playing", isLocal && playing);
+      if (isLocal) {
+        const p = parseTrackName(currentItem.name);
+        $("mnow-title").textContent = p.title;
+        $("mnow-artist").textContent = p.artist;
+        const pos = queue.length && queueIndex >= 0 ? ` · <b>${queueIndex + 1}</b> of ${queue.length}` : "";
+        $("mnow-meta").innerHTML = `${escapeHtml(extOf(currentItem.name))}${currentItem.size ? " · " + escapeHtml(formatBytes(currentItem.size)) : ""}${pos}`;
+        $("mnow-art").textContent = playing ? "▶" : "Ⅱ";
+      } else if (currentType === "radio" && currentItem) {
+        $("mnow-title").textContent = currentItem.name || "unknown station";
+        $("mnow-artist").textContent = "tuned to radio — switch to ./radio for the full view";
+        $("mnow-meta").innerHTML = `◉ <b>LIVE</b> · pick a track below to switch to local`;
+        $("mnow-art").textContent = "◉";
+      } else {
+        $("mnow-title").textContent = "nothing playing";
+        $("mnow-artist").textContent = "pick a track below";
+        $("mnow-meta").textContent = musicFiles.length ? `${musicFiles.length} files ready` : "—";
+        $("mnow-art").textContent = "∅";
+      }
+      $("mnow-play").textContent = playing && currentItem ? "Ⅱ" : "▶";
+    }
+    function scrollToCurrentTrack() {
+      const row = trackList.querySelector(".track-row.active");
+      if (!row) { toast("nothing playing from local"); return; }
+      if (!$("view-music").classList.contains("active")) showView("music");
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+    }
+    $("mnow-play").addEventListener("click", async () => {
+      if (!currentItem && musicFiles.length) { playLocal(0); return; }
+      if (!audio.src) { toast("nothing loaded"); return; }
+      audio.paused ? playAudio() : pauseAudio();
+    });
+    $("mnow-next").addEventListener("click", nextTrack);
+    $("mnow-locate").addEventListener("click", scrollToCurrentTrack);
 
     /* Local music (persisted folder) */
     $("choose-music").addEventListener("click", chooseMusicDirectory);
@@ -1090,6 +1210,7 @@
       }).join("");
       trackList.querySelectorAll(".track-row").forEach(r => r.addEventListener("click", () => playLocal(Number(r.dataset.index))));
       musicCount.textContent = `${rows.length}${q ? " / " + musicFiles.length : ""} file${rows.length === 1 ? "" : "s"}`;
+      renderMusicNow();
     }
     async function playLocal(index) {
       const item = musicFiles[index]; if (!item) return;
@@ -1103,6 +1224,51 @@
       progress.classList.toggle("is-live", false);
       renderMusic(); renderQueue(); pushHistory({ kind: "local", name: item.name, sub: p.artist });
       await playAudio();
+    }
+
+    /* Unified search overlay (stations + local, mobile-friendly) */
+    const searchOverlay = $("search-overlay"), unifiedSearch = $("unified-search"), unifiedResults = $("unified-results");
+    function openSearch() {
+      searchOverlay.classList.add("open");
+      unifiedSearch.value = "";
+      renderUnifiedResults("");
+      setTimeout(() => unifiedSearch.focus(), 30);
+    }
+    function closeSearch() { searchOverlay.classList.remove("open"); unifiedSearch.blur(); }
+    function searchOpen() { return searchOverlay.classList.contains("open"); }
+    $("search-button").addEventListener("click", () => searchOpen() ? closeSearch() : openSearch());
+    searchOverlay.addEventListener("click", e => { if (e.target === searchOverlay) closeSearch(); });
+    unifiedSearch.addEventListener("input", () => renderUnifiedResults(unifiedSearch.value));
+    unifiedSearch.addEventListener("keydown", e => {
+      if (e.key === "Escape") { closeSearch(); return; }
+      if (e.key === "Enter") {
+        const q = unifiedSearch.value.trim();
+        if (!q) return;
+        closeSearch(); showView("radio"); searchRadio(q);
+      }
+    });
+    function renderUnifiedResults(query) {
+      const q = (query || "").toLowerCase().trim();
+      const local = (q ? musicFiles.map((f, i) => ({ f, i })).filter(({ f }) => (f.name + " " + f.path).toLowerCase().includes(q)) : musicFiles.map((f, i) => ({ f, i }))).slice(0, 8);
+      const st = (q ? stations.filter(s => ((s.name || "") + " " + (s.tags || "") + " " + (s.country || "")).toLowerCase().includes(q)) : stations).slice(0, 8);
+      let html = "";
+      if (local.length) {
+        html += `<div class="search-group">local tunes</div>` + local.map(({ f, i }) => {
+          const p = parseTrackName(f.name);
+          return `<button class="search-row" data-u-local="${i}"><div class="ic">♫</div><div style="min-width:0"><div class="nm">${escapeHtml(p.title)}</div><div class="sb">${escapeHtml(p.artist)} · ${escapeHtml(f.path)}</div></div></button>`;
+        }).join("");
+      }
+      if (st.length) {
+        html += `<div class="search-group">stations</div>` + st.map(s => {
+          const idx = stations.indexOf(s);
+          return `<button class="search-row" data-u-radio="${idx}"><div class="ic">◉</div><div style="min-width:0"><div class="nm">${escapeHtml(s.name || "unnamed station")}</div><div class="sb">${escapeHtml(stationTags(s))}</div></div></button>`;
+        }).join("");
+      }
+      if (!html) html = `<div class="empty" style="margin:8px"><strong>no local matches</strong><br />press ⏎ to search the radio directory for "${escapeHtml(query)}"</div>`;
+      else if (q) html += `<div class="search-hint">press <b>⏎</b> to search the radio directory for "${escapeHtml(query)}"</div>`;
+      unifiedResults.innerHTML = html;
+      unifiedResults.querySelectorAll("[data-u-local]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.uLocal); closeSearch(); showView("music"); playLocal(i); }));
+      unifiedResults.querySelectorAll("[data-u-radio]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.uRadio); closeSearch(); playRadio(i); }));
     }
 
     /* Radio */
@@ -1451,7 +1617,7 @@
         case "KeyP": previousTrack(); break;
         case "KeyX": toggleShuffle(); break;
         case "Digit0": toggleMute(); break;
-        case "Slash": e.preventDefault(); ($("view-music").classList.contains("active") ? musicSearch : radioSearch).focus(); topbarSearch.focus(); break;
+        case "Slash": e.preventDefault(); openSearch(); break;
         case "KeyR": showView("radio"); break;
         case "KeyM": showView("music"); break;
         case "KeyF": showView("favorites"); break;
@@ -1465,7 +1631,7 @@
     restoreSession(); updateMusicDirUI(); renderMusic(); restoreMusicDir(); searchRadio();
 
     /* PWA — service worker */
-    if ("serviceWorker" in navigator && window.isSecureContext) {
+    if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
       navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW failed:", e));
     }
 

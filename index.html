@@ -551,7 +551,7 @@
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
         <div class="brand-kana">ラジオ</div>
-        <div class="brand-version">0.11</div>
+        <div class="brand-version">0.12</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
@@ -717,7 +717,7 @@
 
         <!-- PLAYLISTS VIEW -->
         <section class="view" id="view-playlists">
-          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.11</span></div>
+          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.12</span></div>
           <div class="toolbar">
             <input type="search" id="playlist-name" placeholder="new playlist name..." autocomplete="off" style="flex:0 1 240px" />
             <button class="btn accent" id="create-playlist-btn">+ create from queue</button>
@@ -775,7 +775,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.11 · aurora ambient</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.12 · switch-proof metadata</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -913,6 +913,7 @@
     let stations = [], queue = [], queueIndex = -1, musicFiles = [], history = loadJSON("navi-radio-history", []);
     let currentType = null, currentItem = null, shuffled = false, repeatMode = "off";
     let currentIcy = null, nowArtistFallback = "", icyToken = 0;
+    let icyAbort = null, icyFirstTimer = 0; // abort in-flight song fetches on switch; single pending first-attempt
     let dialPos = 0.5, dialDragging = false;
     let noiseGain = null, stationGainNode = null, noiseStarted = false;
     let recorder = null, recChunks = [], recStart = 0, recTimer = null, tapes = [];
@@ -1192,6 +1193,12 @@
     function setNowMetaForRadio(st) {
       const art = settings.showFavicon ? (st.favicon || "") : "";
       nowArtistFallback = [st.country, st.language].filter(Boolean).join(" · ") || (st.tags || "internet radio");
+      // Station switch: kill any in-flight song fetch for the previous station,
+      // drop its token, and clear the song line synchronously — the old station's
+      // "♪ artist – title" must never linger under the new station's name.
+      try { icyAbort?.abort(); } catch {}
+      icyAbort = null;
+      clearTimeout(icyFirstTimer);
       currentIcy = null; icyToken++;
       setNowMeta({
         title: st.name || "unknown station", artist: nowArtistFallback,
@@ -1201,7 +1208,7 @@
         cells: { source: streamHost(st.url_resolved || st.url), bitrate: `${st.bitrate ? st.bitrate + " kbps" : "variable"}${st.codec ? " · " + st.codec : ""}`, location: [st.country, st.state].filter(Boolean).join(", ") || "internet", stats: `${st.votes ?? 0} votes · ${st.clickcount ?? 0} clicks` }
       });
       bitrateLive.textContent = st.bitrate ? st.bitrate + "k " : "";
-      setTimeout(() => { if (currentType === "radio" && currentItem?.stationuuid === st.stationuuid && !audio.paused) refreshIcy(); }, 4000);
+      icyFirstTimer = setTimeout(() => { if (currentType === "radio" && currentItem?.stationuuid === st.stationuuid && !audio.paused) refreshIcy(); }, 4000);
     }
     async function setNowMetaForLocal(item, file) {
       const p = parseTrackName(item.name);
@@ -1396,6 +1403,9 @@
       if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
       audio.src = URL.createObjectURL(file);
       currentType = "local"; currentItem = item; queue = musicFiles; queueIndex = index; dialMixReset();
+      try { icyAbort?.abort(); } catch {}
+      icyAbort = null;
+      clearTimeout(icyFirstTimer);
       currentIcy = null; nowArtistFallback = ""; icyToken++;
       const p = parseTrackName(item.name);
       setNowMetaForLocal(item, file); setContext("./music");
@@ -1707,10 +1717,15 @@
     })();
 
     /* ============ ICY live-song metadata ============ */
-    async function fetchJson(url, timeoutMs = 7000) {
+    async function fetchJson(url, timeoutMs = 7000, signal) {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+      let onAbort = null;
+      if (signal) {
+        if (signal.aborted) ctrl.abort();
+        else { onAbort = () => ctrl.abort(); signal.addEventListener("abort", onAbort, { once: true }); }
+      }
       try { const res = await fetch(url, { signal: ctrl.signal }); if (!res.ok) return null; return await res.json(); }
-      catch { return null; } finally { clearTimeout(to); }
+      catch { return null; } finally { clearTimeout(to); if (signal && onAbort) signal.removeEventListener("abort", onAbort); }
     }
     // SomaFM: https://somafm.com/songs/<slug>.json (sends Access-Control-Allow-Origin: *)
     function somaSlug(url) {
@@ -1723,19 +1738,19 @@
         return m ? m[1] : seg;
       } catch { return null; }
     }
-    async function fetchSomaMeta(url) {
+    async function fetchSomaMeta(url, signal) {
       const slug = somaSlug(url); if (!slug) return null;
-      const d = await fetchJson(`https://somafm.com/songs/${encodeURIComponent(slug)}.json`);
+      const d = await fetchJson(`https://somafm.com/songs/${encodeURIComponent(slug)}.json`, 7000, signal);
       const s = d && d.songs && d.songs[0];
       if (!s || !s.title) return null;
       return { artist: s.artist || "", title: String(s.title), album: s.album || "" };
     }
     // Generic Icecast: {origin}/status-json.xsl → icestats.source.title ("Artist - Title")
-    async function fetchIcecastMeta(url) {
+    async function fetchIcecastMeta(url, signal) {
       let origin, tail;
       try { const u = new URL(url); origin = u.origin; tail = u.pathname.split("/").filter(Boolean).pop() || ""; }
       catch { return null; }
-      const d = await fetchJson(origin + "/status-json.xsl");
+      const d = await fetchJson(origin + "/status-json.xsl", 7000, signal);
       let srcs = d && d.icestats && d.icestats.source;
       if (!srcs) return null;
       if (!Array.isArray(srcs)) srcs = [srcs];
@@ -1746,8 +1761,13 @@
     }
     // Direct ICY: no Range header (metaint can exceed any window); when the
     // icy-metaint header is hidden by CORS, scan the bytes for StreamTitle.
-    async function fetchIcyTitle(url, timeoutMs = 12000) {
+    async function fetchIcyTitle(url, timeoutMs = 12000, signal) {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+      let onAbort = null;
+      if (signal) {
+        if (signal.aborted) ctrl.abort();
+        else { onAbort = () => ctrl.abort(); signal.addEventListener("abort", onAbort, { once: true }); }
+      }
       try {
         const res = await fetch(url, { headers: { "Icy-MetaData": "1" }, signal: ctrl.signal });
         if (!res.body) return null;
@@ -1775,24 +1795,29 @@
         }
         const m = meta.match(/StreamTitle='([^']*)'/);
         return m ? m[1].trim() : null;
-      } catch { return null; } finally { clearTimeout(to); }
+      } catch { return null; } finally { clearTimeout(to); if (signal && onAbort) signal.removeEventListener("abort", onAbort); }
     }
     function parseIcy(raw) {
       const i = raw.indexOf(" - ");
       if (i > 0) return { artist: raw.slice(0, i).trim(), title: raw.slice(i + 3).trim() };
       return { artist: "", title: raw };
     }
-    async function resolveNowPlaying(station, streamUrl) {
-      try { const s = await fetchSomaMeta(streamUrl); if (s && (s.artist || s.title)) return s; } catch {}
-      try { const s = await fetchIcecastMeta(streamUrl); if (s && (s.artist || s.title)) return s; } catch {}
-      try { const raw = await fetchIcyTitle(streamUrl); if (raw) return parseIcy(raw); } catch {}
+    async function resolveNowPlaying(station, streamUrl, signal) {
+      try { const s = await fetchSomaMeta(streamUrl, signal); if (s && (s.artist || s.title)) return s; } catch {}
+      try { const s = await fetchIcecastMeta(streamUrl, signal); if (s && (s.artist || s.title)) return s; } catch {}
+      try { const raw = await fetchIcyTitle(streamUrl, 12000, signal); if (raw) return parseIcy(raw); } catch {}
       return null;
     }
     async function refreshIcy() {
       if (currentType !== "radio" || !currentItem || audio.paused) return;
       const url = currentItem.url_resolved || currentItem.url; if (!url) return;
+      // A newer song fetch supersedes any older one: abort the previous
+      // request (it may be mid-download of the old station's stream) and
+      // take a fresh token. A late result can never land on the wrong station.
+      try { icyAbort?.abort(); } catch {}
+      icyAbort = new AbortController();
       const tok = ++icyToken;
-      const meta = await resolveNowPlaying(currentItem, url);
+      const meta = await resolveNowPlaying(currentItem, url, icyAbort.signal);
       if (tok !== icyToken) return;
       if (meta && (meta.artist || meta.title)) {
         currentIcy = { artist: meta.artist || nowArtistFallback, title: meta.title || (currentItem.name || "radio"), album: meta.album || "" };
@@ -1901,6 +1926,9 @@
       if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
       audio.src = t.url;
       currentType = "tape"; currentItem = { name: t.name }; dialMixReset();
+      try { icyAbort?.abort(); } catch {}
+      icyAbort = null;
+      clearTimeout(icyFirstTimer);
       currentIcy = null; nowArtistFallback = ""; icyToken++;
       setNowMeta({ title: t.name, artist: "reel-to-reel · tape deck", kicker: "tape deck", source: "TAPE", live: "TAPE", codec: "WEBM/OPUS", fav: false, art: "", homepage: "", cells: { source: "tape library", bitrate: formatBytes(t.blob.size), location: "tape deck", stats: "recorded " + new Date(t.at).toLocaleString() } });
       setContext("./tapes"); progress.classList.toggle("is-live", false);

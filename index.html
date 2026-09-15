@@ -281,6 +281,8 @@
     .radio-heart { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; transition: color 100ms ease, transform 100ms ease; }
     .radio-heart:hover { color: var(--neon-pink); transform: scale(1.08); }
     .radio-heart.favorite { color: var(--neon-pink); text-shadow: 0 0 8px rgba(255,16,240,0.8), 0 0 18px rgba(255,16,240,0.3); }
+    .mini-link { margin-left: auto; background: none; border: 0; padding: 6px 4px; color: var(--dim); font: inherit; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+    .mini-link:hover { color: var(--neon-pink); }
 
     .empty { padding: 32px 15px; border: 1px dashed var(--border); color: var(--dim); text-align: center; line-height: 1.7; background: rgba(0,0,0,0.4); }
     .empty::before { content: "// "; color: var(--neon-green); }
@@ -527,7 +529,7 @@
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
         <div class="brand-kana">ラジオ</div>
-        <div class="brand-version">0.6</div>
+        <div class="brand-version">0.7</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
@@ -535,6 +537,7 @@
         <button class="nav-button" data-view="music"><span class="nav-icon">♫</span><span>music</span><span class="nav-count" id="nav-music-count"></span></button>
         <button class="nav-button" data-view="favorites"><span class="nav-icon">♥</span><span>favorites</span><span class="nav-count" id="nav-fav-count"></span></button>
         <button class="nav-button" data-view="dial"><span class="nav-icon">◈</span><span>tuner</span></button>
+        <button class="nav-button" data-view="tapes"><span class="nav-icon">▤</span><span>tapes</span><span class="nav-count" id="nav-tape-count"></span></button>
         <div class="nav-label">library</div>
         <button class="nav-button" data-view="playlists"><span class="nav-icon">≡</span><span>playlists</span></button>
         <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span><span>settings</span></button>
@@ -608,7 +611,7 @@
               <div class="radio-list" id="station-list"><div class="empty"><strong>searching radio browser...</strong></div></div>
             </div>
             <div class="section" id="tapes-section" style="display:none">
-              <div class="panel-title">tapes <span class="count" id="tape-count">session only</span></div>
+              <div class="panel-title">tapes <span class="count" id="tape-count"></span><button class="mini-link" data-goto-tapes>library →</button></div>
               <div class="radio-list" id="tape-list"></div>
             </div>
           </div>
@@ -628,6 +631,14 @@
               </div>
               <div class="dial-hint">drag to tune · static between stations · release to snap · tap a marker to jump</div>
             </div>
+          </div>
+        </section>
+
+        <!-- TAPES VIEW -->
+        <section class="view" id="view-tapes">
+          <div class="player-view">
+            <div class="panel-title">tapes <span class="count" id="tapes-view-count"></span></div>
+            <div class="radio-list" id="tapes-view-list"><div class="empty"><strong>loading the tape library…</strong></div></div>
           </div>
         </section>
 
@@ -681,7 +692,7 @@
 
         <!-- PLAYLISTS VIEW -->
         <section class="view" id="view-playlists">
-          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.6</span></div>
+          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.7</span></div>
           <div class="toolbar">
             <input type="search" id="playlist-name" placeholder="new playlist name..." autocomplete="off" style="flex:0 1 240px" />
             <button class="btn accent" id="create-playlist-btn">+ create from queue</button>
@@ -739,7 +750,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.6 · tuner dial + tape deck + ambient mode + station cards + live song metadata</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.7 · layered live metadata (SomaFM / Icecast / ICY) + tapes library (IndexedDB) + tape sharing</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -905,8 +916,12 @@
     /* Persistent handles (IndexedDB — File System Access handles can't live in localStorage) */
     function idbOpen() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open("navi-radio", 1);
-        req.onupgradeneeded = () => { req.result.createObjectStore("handles"); };
+        const req = indexedDB.open("navi-radio", 2);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("handles")) db.createObjectStore("handles");
+          if (!db.objectStoreNames.contains("tapes")) db.createObjectStore("tapes", { keyPath: "id", autoIncrement: true });
+        };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
@@ -934,6 +949,35 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("handles", "readwrite");
         tx.objectStore("handles").delete(key);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    /* Tape library — recordings persist in IndexedDB so they survive reload */
+    async function idbTapePut(tape) {
+      const db = await idbOpen();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("tapes", "readwrite");
+        const rq = tx.objectStore("tapes").put(tape);
+        rq.onsuccess = () => { db.close(); resolve(rq.result); };
+        rq.onerror = () => reject(rq.error);
+      });
+    }
+    async function idbTapesAll() {
+      const db = await idbOpen();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("tapes", "readonly");
+        const rq = tx.objectStore("tapes").getAll();
+        rq.onsuccess = () => { db.close(); resolve(rq.result || []); };
+        rq.onerror = () => reject(rq.error);
+      });
+    }
+    async function idbTapeDel(id) {
+      const db = await idbOpen();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("tapes", "readwrite");
+        tx.objectStore("tapes").delete(id);
         tx.oncomplete = () => { db.close(); resolve(); };
         tx.onerror = () => reject(tx.error);
       });
@@ -990,9 +1034,10 @@
       document.querySelectorAll(".view").forEach(s => s.classList.remove("active"));
       $("view-" + view)?.classList.add("active");
       document.querySelectorAll(".nav-button[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === view));
-      const contexts = { radio:"./radio", music:"./music", favorites:"./favorites", dial:"./tuner", playlists:"./playlists", settings:"./settings" };
+      const contexts = { radio:"./radio", music:"./music", favorites:"./favorites", dial:"./tuner", tapes:"./tapes", playlists:"./playlists", settings:"./settings" };
       setContext(contexts[view] || "./navi");
       if (view === "dial") renderDial();
+      if (view === "tapes") renderTapesView();
     }
     document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(x => x.classList.remove("active")); t.classList.add("active");
@@ -1055,7 +1100,8 @@
           const title = icy?.title || (currentType === "local" ? parseTrackName(currentItem.name).title : (currentItem.name || "unknown station"));
           const artist = icy?.artist || (currentType === "local" ? parseTrackName(currentItem.name).artist : currentType === "tape" ? "tape deck" : (currentItem.country || "internet radio"));
           const art = currentType === "radio" && settings.showFavicon && currentItem.favicon ? currentItem.favicon : "";
-          navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: currentType === "local" ? "local music" : "navi radio", artwork: art ? [{ src: art, sizes: "512x512" }] : [] });
+          const album = icy?.album || (currentType === "local" ? "local music" : "navi radio");
+          navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album, artwork: art ? [{ src: art, sizes: "512x512" }] : [] });
           navigator.mediaSession.playbackState = playing ? "playing" : "paused";
           navigator.mediaSession.setActionHandler("play", playAudio); navigator.mediaSession.setActionHandler("pause", pauseAudio);
           navigator.mediaSession.setActionHandler("previoustrack", previousTrack); navigator.mediaSession.setActionHandler("nexttrack", nextTrack);
@@ -1612,26 +1658,72 @@
     })();
 
     /* ============ ICY live-song metadata ============ */
-    async function fetchIcyTitle(url, timeoutMs = 9000) {
+    async function fetchJson(url, timeoutMs = 7000) {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+      try { const res = await fetch(url, { signal: ctrl.signal }); if (!res.ok) return null; return await res.json(); }
+      catch { return null; } finally { clearTimeout(to); }
+    }
+    // SomaFM: https://somafm.com/songs/<slug>.json (sends Access-Control-Allow-Origin: *)
+    function somaSlug(url) {
+      try {
+        const u = new URL(url);
+        if (!u.hostname.includes("somafm.com")) return null;
+        const seg = u.pathname.split("/").filter(Boolean)[0] || "";
+        if (!seg) return null;
+        const m = seg.match(/^(.+?)-\d/);
+        return m ? m[1] : seg;
+      } catch { return null; }
+    }
+    async function fetchSomaMeta(url) {
+      const slug = somaSlug(url); if (!slug) return null;
+      const d = await fetchJson(`https://somafm.com/songs/${encodeURIComponent(slug)}.json`);
+      const s = d && d.songs && d.songs[0];
+      if (!s || !s.title) return null;
+      return { artist: s.artist || "", title: String(s.title), album: s.album || "" };
+    }
+    // Generic Icecast: {origin}/status-json.xsl → icestats.source.title ("Artist - Title")
+    async function fetchIcecastMeta(url) {
+      let origin, tail;
+      try { const u = new URL(url); origin = u.origin; tail = u.pathname.split("/").filter(Boolean).pop() || ""; }
+      catch { return null; }
+      const d = await fetchJson(origin + "/status-json.xsl");
+      let srcs = d && d.icestats && d.icestats.source;
+      if (!srcs) return null;
+      if (!Array.isArray(srcs)) srcs = [srcs];
+      const src = (tail && srcs.find(s => s && s.listenurl && s.listenurl.includes(tail))) || srcs.find(s => s && s.title) || srcs[0];
+      const t = src && src.title;
+      if (!t || !String(t).trim()) return null;
+      return parseIcy(String(t).trim());
+    }
+    // Direct ICY: no Range header (metaint can exceed any window); when the
+    // icy-metaint header is hidden by CORS, scan the bytes for StreamTitle.
+    async function fetchIcyTitle(url, timeoutMs = 12000) {
       const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
-        const res = await fetch(url, { headers: { "Icy-MetaData": "1", "Range": "bytes=0-32767" }, signal: ctrl.signal });
+        const res = await fetch(url, { headers: { "Icy-MetaData": "1" }, signal: ctrl.signal });
+        if (!res.body) return null;
         const metaInt = parseInt(res.headers.get("icy-metaint") || "", 10);
-        if (!Number.isFinite(metaInt) || metaInt < 0 || !res.body) return null;
+        const haveInt = Number.isFinite(metaInt) && metaInt > 0;
         const reader = res.body.getReader();
         let buf = new Uint8Array(0);
+        const CAP = 262144;
         try {
-          while (buf.length < metaInt + 2) {
+          while (buf.length < CAP) {
             const { done, value } = await reader.read();
             if (done || !value) break;
             const nb = new Uint8Array(buf.length + value.length); nb.set(buf); nb.set(value, buf.length); buf = nb;
-            if (buf.length > 65536) break;
+            if (haveInt && buf.length > metaInt + 1) break;
           }
         } finally { try { reader.cancel(); } catch {} }
-        if (buf.length <= metaInt) return null;
-        const metaLen = buf[metaInt] * 16;
-        if (metaLen <= 0 || buf.length < metaInt + 1 + metaLen) return null;
-        const meta = new TextDecoder("utf-8").decode(buf.slice(metaInt + 1, metaInt + 1 + metaLen));
+        let meta = "";
+        if (haveInt && buf.length > metaInt + 1) {
+          const metaLen = buf[metaInt] * 16;
+          if (metaLen > 0 && buf.length >= metaInt + 1 + metaLen) meta = new TextDecoder("utf-8").decode(buf.slice(metaInt + 1, metaInt + 1 + metaLen));
+        }
+        if (!meta) {
+          const sm = new TextDecoder("utf-8").decode(buf).match(/StreamTitle='([^']*)';/);
+          if (sm) meta = sm[0];
+        }
         const m = meta.match(/StreamTitle='([^']*)'/);
         return m ? m[1].trim() : null;
       } catch { return null; } finally { clearTimeout(to); }
@@ -1641,15 +1733,20 @@
       if (i > 0) return { artist: raw.slice(0, i).trim(), title: raw.slice(i + 3).trim() };
       return { artist: "", title: raw };
     }
+    async function resolveNowPlaying(station, streamUrl) {
+      try { const s = await fetchSomaMeta(streamUrl); if (s && (s.artist || s.title)) return s; } catch {}
+      try { const s = await fetchIcecastMeta(streamUrl); if (s && (s.artist || s.title)) return s; } catch {}
+      try { const raw = await fetchIcyTitle(streamUrl); if (raw) return parseIcy(raw); } catch {}
+      return null;
+    }
     async function refreshIcy() {
       if (currentType !== "radio" || !currentItem || audio.paused) return;
       const url = currentItem.url_resolved || currentItem.url; if (!url) return;
       const tok = ++icyToken;
-      const raw = await fetchIcyTitle(url);
+      const meta = await resolveNowPlaying(currentItem, url);
       if (tok !== icyToken) return;
-      if (raw) {
-        const p = parseIcy(raw);
-        currentIcy = { artist: p.artist || nowArtistFallback, title: p.title || raw };
+      if (meta && (meta.artist || meta.title)) {
+        currentIcy = { artist: meta.artist || nowArtistFallback, title: meta.title || (currentItem.name || "radio"), album: meta.album || "" };
       } else currentIcy = null;
       applyIcy();
     }
@@ -1662,7 +1759,7 @@
     }
     setInterval(() => { if (currentType === "radio" && currentItem && !audio.paused) refreshIcy(); }, 30000);
 
-    /* ============ Tape deck — record the stream, session only ============ */
+    /* ============ Tape deck — record the stream, persisted in the tape library ============ */
     function formatTapeClock(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
     async function startRecording() {
       if (!audio.src) { toast("nothing loaded to record"); return; }
@@ -1682,40 +1779,87 @@
       } catch (err) { console.warn("rec failed", err); toast("recording not supported here"); }
     }
     function stopRecording() { if (recorder && recorder.state === "recording") recorder.stop(); }
-    function finishRecording() {
+    async function finishRecording() {
       clearInterval(recTimer);
       const rb = $("rec-btn"); rb.classList.remove("on"); rb.textContent = "● rec";
       const blob = new Blob(recChunks, { type: (recorder && recorder.mimeType) || "audio/webm" });
       recChunks = []; recorder = null;
       if (!blob.size) { toast("tape came out blank"); return; }
-      const url = URL.createObjectURL(blob);
       const when = new Date();
       const name = `${currentItem?.name || "radio"} · ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-      tapes.unshift({ name, url, blob, at: when.getTime(), dur: (Date.now() - recStart) / 1000 });
-      renderTapes();
+      const rec = { name, at: when.getTime(), dur: (Date.now() - recStart) / 1000, blob };
+      try { rec.id = await idbTapePut(rec); } catch (e) { console.warn("tape persist failed", e); }
+      rec.url = URL.createObjectURL(blob);
+      tapes.unshift(rec);
+      renderTapes(); renderTapesView();
       toast(`tape saved — <b>${escapeHtml(name)}</b>`);
+    }
+    function tapeCard(t, i) {
+      return `<div class="radio-card"><button class="radio-main" data-tape-play="${i}"><div style="min-width:0"><div class="radio-name">▸ ${escapeHtml(t.name)}</div><div class="radio-tags">${new Date(t.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} · ${formatTapeClock(t.dur)} · ${formatBytes(t.blob.size)} · webm</div></div></button><div class="card-actions"><button class="radio-heart" data-tape-share="${i}" title="share tape">⧉</button><a class="radio-heart" href="${t.url}" download="navi-radio-tape-${t.at}.webm" title="download tape">↓</a><button class="radio-heart" data-tape-del="${i}" title="delete tape">✕</button></div></div>`;
+    }
+    function wireTapeList(el) {
+      el.querySelectorAll("[data-tape-play]").forEach(b => b.addEventListener("click", () => playTape(Number(b.dataset.tapePlay))));
+      el.querySelectorAll("[data-tape-share]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); shareTape(Number(b.dataset.tapeShare)); }));
+      el.querySelectorAll("[data-tape-del]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); deleteTape(Number(b.dataset.tapeDel)); }));
     }
     function renderTapes() {
       const sec = $("tapes-section"); if (!sec) return;
       sec.style.display = tapes.length ? "" : "none";
-      $("tape-count").textContent = tapes.length ? `${tapes.length} · this session` : "session only";
-      $("tape-list").innerHTML = tapes.map((t, i) =>
-        `<div class="radio-card"><button class="radio-main" data-tape-play="${i}"><div style="min-width:0"><div class="radio-name">▸ ${escapeHtml(t.name)}</div><div class="radio-tags">tape · ${formatTapeClock(t.dur)} · ${formatBytes(t.blob.size)} · webm</div></div></button><div class="card-actions"><a class="radio-heart" href="${t.url}" download="navi-radio-tape-${t.at}.webm" title="download tape">↓</a><button class="radio-heart" data-tape-del="${i}" title="delete tape">✕</button></div></div>`
-      ).join("");
-      $("tape-list").querySelectorAll("[data-tape-play]").forEach(b => b.addEventListener("click", () => playTape(Number(b.dataset.tapePlay))));
-      $("tape-list").querySelectorAll("[data-tape-del]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); const t = tapes[Number(b.dataset.tapeDel)]; if (t) URL.revokeObjectURL(t.url); tapes.splice(Number(b.dataset.tapeDel), 1); renderTapes(); toast("tape erased"); }));
+      $("tape-count").textContent = tapes.length ? `${tapes.length} · saved` : "";
+      const list = $("tape-list");
+      list.innerHTML = tapes.slice(0, 3).map((t, i) => tapeCard(t, i)).join("");
+      wireTapeList(list);
+    }
+    async function deleteTape(i) {
+      const t = tapes[i]; if (!t) return;
+      tapes.splice(i, 1);
+      try { if (t.id != null) await idbTapeDel(t.id); } catch (e) { console.warn("tape delete failed", e); }
+      try { URL.revokeObjectURL(t.url); } catch {}
+      renderTapes(); renderTapesView(); toast("tape erased");
+    }
+    async function shareTape(i) {
+      const t = tapes[i]; if (!t) return;
+      const fname = `navi-radio-tape-${t.at}.webm`;
+      const file = new File([t.blob], fname, { type: t.blob.type || "audio/webm" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "navi radio tape", text: t.name }); return; }
+        catch (e) { if (e && e.name === "AbortError") return; }
+      }
+      const a = document.createElement("a"); a.href = t.url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      toast("share not available here — downloaded instead");
+    }
+    function renderTapesView() {
+      const list = $("tapes-view-list"); if (!list) return;
+      $("tapes-view-count").textContent = tapes.length ? `${tapes.length} saved` : "";
+      const nav = $("nav-tape-count"); if (nav) nav.textContent = tapes.length || "";
+      if (!tapes.length) {
+        list.innerHTML = `<div class="empty"><strong>no tapes yet</strong><br />hit ● rec while something's playing and your recordings will live here — even after a reload.</div>`;
+        return;
+      }
+      list.innerHTML = tapes.map((t, i) => tapeCard(t, i)).join("");
+      wireTapeList(list);
+    }
+    async function loadTapes() {
+      try {
+        const rows = await idbTapesAll();
+        tapes = (rows || []).map(r => ({ ...r, url: URL.createObjectURL(r.blob) })).sort((a, b) => b.at - a.at);
+      } catch (e) { console.warn("tape load failed", e); tapes = []; }
+      renderTapes(); renderTapesView();
     }
     async function playTape(i) {
       const t = tapes[i]; if (!t) return;
       if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
       audio.src = t.url;
       currentType = "tape"; currentItem = { name: t.name }; dialMixReset();
-      setNowMeta({ title: t.name, artist: "reel-to-reel · this session", kicker: "tape deck", source: "TAPE", live: "TAPE", codec: "WEBM/OPUS", fav: false, art: "", homepage: "", cells: { source: "memory · session only", bitrate: formatBytes(t.blob.size), location: "tape deck", stats: "recorded " + new Date(t.at).toLocaleTimeString() } });
+      setNowMeta({ title: t.name, artist: "reel-to-reel · tape deck", kicker: "tape deck", source: "TAPE", live: "TAPE", codec: "WEBM/OPUS", fav: false, art: "", homepage: "", cells: { source: "tape library", bitrate: formatBytes(t.blob.size), location: "tape deck", stats: "recorded " + new Date(t.at).toLocaleString() } });
       setContext("./tapes"); progress.classList.toggle("is-live", false);
       progressFill.style.width = "0%"; progressBuffer.style.width = "0%";
-      renderTapes(); await playAudio();
+      renderTapes(); renderTapesView(); await playAudio();
     }
     $("rec-btn").addEventListener("click", () => { (recorder && recorder.state === "recording") ? stopRecording() : startRecording(); });
+    document.querySelector("[data-goto-tapes]")?.addEventListener("click", () => showView("tapes"));
+    loadTapes();
 
     /* ============ Ambient mode — fullscreen visualizer vibe ============ */
     function openAmbient(soft) {
@@ -1732,7 +1876,7 @@
       if (currentIcy) el.textContent = `♪ ${currentIcy.artist} – ${currentIcy.title}`;
       else if (currentType === "radio") el.textContent = currentItem ? (nowArtistFallback || "internet radio") : "—";
       else if (currentType === "local") el.textContent = currentItem ? parseTrackName(currentItem.name).artist : "—";
-      else if (currentType === "tape") el.textContent = "reel-to-reel · this session";
+      else if (currentType === "tape") el.textContent = "reel-to-reel · tape deck";
       else el.textContent = "—";
     }
     function syncAmbient() { if (!$("ambient").hidden) openAmbient(true); }

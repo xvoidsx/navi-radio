@@ -456,6 +456,35 @@
     .track-row.flash { animation: rowflash 1.2s ease; }
     @keyframes rowflash { 0%, 40% { background: rgba(57,255,20,0.16); } 100% { background: transparent; } }
 
+    /* tuner dial */
+    .dial-wrap { border: 1px solid var(--border); background: rgba(0,0,0,0.55); padding: 26px 26px 20px; position: relative; overflow: hidden; }
+    .dial-readout { display: flex; align-items: baseline; gap: 8px; justify-content: center; }
+    #dial-mhz { font-size: 44px; color: var(--neon-green); text-shadow: 0 0 18px rgba(57,255,20,0.5); font-variant-numeric: tabular-nums; }
+    .dial-unit { color: var(--dim); font-size: 11px; letter-spacing: 0.2em; }
+    .dial-station { text-align: center; margin: 8px 0 18px; font-size: 13px; color: var(--muted); min-height: 1.6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dial-station.locked { color: var(--neon-pink); text-shadow: 0 0 12px rgba(255,16,240,0.6); }
+    .dial-band { position: relative; height: 64px; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+    .dial-band::before { content: ""; position: absolute; left: 0; right: 0; top: 26px; height: 12px; background: linear-gradient(90deg, rgba(255,16,240,0.14), rgba(0,255,255,0.14), rgba(57,255,20,0.14)); pointer-events: none; }
+    .dial-scale { position: absolute; left: 0; right: 0; top: 26px; height: 12px; background: repeating-linear-gradient(90deg, rgba(57,255,20,0.4) 0 1px, transparent 1px 12px); border-top: 1px solid rgba(57,255,20,0.25); pointer-events: none; }
+    .dial-markers { position: absolute; inset: 0; }
+    .dial-marker { position: absolute; top: 16px; width: 32px; height: 32px; transform: translateX(-50%); background: transparent; border: 0; cursor: pointer; padding: 0; }
+    .dial-marker::after { content: ""; display: block; width: 6px; height: 6px; margin: 13px auto; background: var(--neon-cyan); transform: rotate(45deg); box-shadow: 0 0 8px rgba(0,255,255,0.8); }
+    .dial-marker:hover::after { background: var(--neon-pink); box-shadow: 0 0 10px rgba(255,16,240,0.9); }
+    .dial-needle { position: absolute; top: 6px; bottom: 6px; width: 2px; background: var(--neon-pink); box-shadow: 0 0 12px rgba(255,16,240,0.9); transform: translateX(-50%); pointer-events: none; }
+    .dial-needle::before { content: ""; position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 28px; height: 28px; border: 2px solid var(--neon-pink); border-radius: 50%; background: rgba(255,16,240,0.12); box-shadow: 0 0 14px rgba(255,16,240,0.5); }
+    .dial-hint { text-align: center; color: var(--dim); font-size: 10px; margin-top: 14px; }
+    /* ambient mode */
+    .ambient { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(0,0,0,0.6); cursor: pointer; text-align: center; padding: 20px; animation: fadein 300ms ease; }
+    .ambient[hidden] { display: none; }
+    .ambient-kicker { color: var(--neon-cyan); font-size: 11px; letter-spacing: 0.3em; margin-bottom: 14px; }
+    .ambient-title { font-size: clamp(28px, 6vw, 64px); color: var(--text); text-shadow: 0 0 30px rgba(255,16,240,0.5); overflow-wrap: anywhere; }
+    .ambient-song { margin-top: 12px; font-size: clamp(14px, 2.4vw, 22px); color: var(--neon-green); }
+    .ambient-hint { margin-top: 34px; color: var(--dim); font-size: 10px; letter-spacing: 0.2em; }
+    .album-live.cyan { color: var(--neon-cyan); border-color: rgba(0,255,255,0.35); }
+    .card-actions { display: flex; }
+    a.radio-heart { text-decoration: none; }
+    #rec-btn.on { color: var(--neon-red); border-color: var(--neon-red); animation: liveBlink 1s ease-in-out infinite; }
+
     @media (max-width: 1100px) {
       :root { --sidebar-width: 64px; --right-width: 0px; }
       .brand { justify-content: center; padding: 0; }
@@ -481,6 +510,9 @@
       .track-title { font-size: 24px; }
       .topbar-search { display: none; }
       #visualizer { opacity: 0.45; }
+      .dial-needle::before { width: 38px; height: 38px; }
+      .dial-wrap { padding: 20px 14px 16px; }
+      #dial-mhz { font-size: 34px; }
     }
   </style>
 </head>
@@ -495,13 +527,14 @@
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
         <div class="brand-kana">ラジオ</div>
-        <div class="brand-version">0.5</div>
+        <div class="brand-version">0.6</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
         <button class="nav-button active" data-view="radio"><span class="nav-icon">◉</span><span>radio</span><span class="nav-count" id="nav-station-count"></span></button>
         <button class="nav-button" data-view="music"><span class="nav-icon">♫</span><span>music</span><span class="nav-count" id="nav-music-count"></span></button>
         <button class="nav-button" data-view="favorites"><span class="nav-icon">♥</span><span>favorites</span><span class="nav-count" id="nav-fav-count"></span></button>
+        <button class="nav-button" data-view="dial"><span class="nav-icon">◈</span><span>tuner</span></button>
         <div class="nav-label">library</div>
         <button class="nav-button" data-view="playlists"><span class="nav-icon">≡</span><span>playlists</span></button>
         <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span><span>settings</span></button>
@@ -565,12 +598,35 @@
                   <button class="btn" id="copy-url-btn" disabled>⧉ copy stream url</button>
                   <a class="btn" id="homepage-btn" href="#" target="_blank" rel="noopener" style="display:none">↗ homepage</a>
                   <button class="btn pink" id="now-fav-btn" style="display:none">♡ favorite</button>
+                  <button class="btn pink" id="rec-btn" title="record to tape">● rec</button>
+                  <button class="btn" id="ambient-btn" title="ambient fullscreen mode">⛶ ambient</button>
                 </div>
               </div>
             </div>
             <div class="section">
               <div class="panel-title">stations <span class="count" id="station-count">0</span></div>
               <div class="radio-list" id="station-list"><div class="empty"><strong>searching radio browser...</strong></div></div>
+            </div>
+            <div class="section" id="tapes-section" style="display:none">
+              <div class="panel-title">tapes <span class="count" id="tape-count">session only</span></div>
+              <div class="radio-list" id="tape-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TUNER VIEW -->
+        <section class="view" id="view-dial">
+          <div class="player-view">
+            <div class="panel-title">tuner <span class="count" id="dial-count"></span></div>
+            <div class="dial-wrap">
+              <div class="dial-readout"><span id="dial-mhz">--.-</span><span class="dial-unit">MHz</span></div>
+              <div class="dial-station" id="dial-station-name">drag the needle to tune</div>
+              <div class="dial-band" id="dial-band">
+                <div class="dial-scale"></div>
+                <div class="dial-markers" id="dial-markers"></div>
+                <div class="dial-needle" id="dial-needle" style="left:50%"></div>
+              </div>
+              <div class="dial-hint">drag to tune · static between stations · release to snap · tap a marker to jump</div>
             </div>
           </div>
         </section>
@@ -625,7 +681,7 @@
 
         <!-- PLAYLISTS VIEW -->
         <section class="view" id="view-playlists">
-          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.5</span></div>
+          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.6</span></div>
           <div class="toolbar">
             <input type="search" id="playlist-name" placeholder="new playlist name..." autocomplete="off" style="flex:0 1 240px" />
             <button class="btn accent" id="create-playlist-btn">+ create from queue</button>
@@ -683,7 +739,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.5 · persistent now-playing bar + sleep countdown + mobile polish</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.6 · tuner dial + tape deck + ambient mode + station cards + live song metadata</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -692,14 +748,14 @@
               <div class="shortcut-row"><span>seek ±10s</span><span><kbd>←</kbd> <kbd>→</kbd></span></div>
               <div class="shortcut-row"><span>volume</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
               <div class="shortcut-row"><span>search</span><span><kbd>/</kbd></span></div>
-              <div class="shortcut-row"><span>views</span><span><kbd>R</kbd> <kbd>M</kbd> <kbd>F</kbd> <kbd>S</kbd></span></div>
+              <div class="shortcut-row"><span>views</span><span><kbd>R</kbd> <kbd>M</kbd> <kbd>F</kbd> <kbd>T</kbd> <kbd>S</kbd></span></div>
               <div class="shortcut-row"><span>shuffle</span><span><kbd>X</kbd></span></div>
               <div class="shortcut-row"><span>mute</span><span><kbd>0</kbd></span></div>
               <div class="shortcut-row"><span>this help</span><span><kbd>?</kbd></span></div>
             </div>
             <div class="setting-card">
               <h3>about</h3>
-              <p><b style="color:var(--text);font-weight:normal">navi radio 0.5</b> — default radio + local music app for the navi linux distro.<br><br>Theme: <b style="color:var(--neon-pink);font-weight:normal">nightshadeNeon</b> by rav3ndust &amp; RyokoUmbra — neon pink / green / cyan / red on black &amp; white.<br><br>Single-file webapp. No tracking, no account.</p>
+              <p><b style="color:var(--text);font-weight:normal">navi radio 0.6</b> — default radio + local music app for the navi linux distro.<br><br>Theme: <b style="color:var(--neon-pink);font-weight:normal">nightshadeNeon</b> by rav3ndust &amp; RyokoUmbra — neon pink / green / cyan / red on black &amp; white.<br><br>Single-file webapp. No tracking, no account.</p>
             </div>
           </div>
         </section>
@@ -774,13 +830,22 @@
         <div class="shortcut-row"><span><kbd>←</kbd><kbd>→</kbd> seek 10s</span><span><kbd>↑</kbd><kbd>↓</kbd> volume</span></div>
         <div class="shortcut-row"><span><kbd>/</kbd> search</span><span><kbd>?</kbd> close</span></div>
         <div class="shortcut-row"><span><kbd>R</kbd> radio</span><span><kbd>M</kbd> music</span></div>
-        <div class="shortcut-row"><span><kbd>F</kbd> favorites</span><span><kbd>S</kbd> settings</span></div>
-        <div class="shortcut-row"><span><kbd>X</kbd> shuffle</span><span><kbd>0</kbd> mute</span></div>
+        <div class="shortcut-row"><span><kbd>F</kbd> favorites</span><span><kbd>T</kbd> tuner</span></div>
+        <div class="shortcut-row"><span><kbd>S</kbd> settings</span><span><kbd>X</kbd> shuffle</span></div>
+        <div class="shortcut-row"><span><kbd>0</kbd> mute</span><span></span></div>
         <div style="margin-top:14px;text-align:right"><button class="btn accent" id="keys-close">close</button></div>
       </div>
     </div>
   </div>
 
+  <div class="ambient" id="ambient" hidden>
+    <div class="ambient-inner">
+      <div class="ambient-kicker"><span class="mini-live" id="ambient-live" hidden></span><span id="ambient-kicker">radio signal</span></div>
+      <div class="ambient-title" id="ambient-title">navi radio</div>
+      <div class="ambient-song" id="ambient-song">—</div>
+      <div class="ambient-hint">esc · tap to exit</div>
+    </div>
+  </div>
   <audio id="audio" crossorigin="anonymous" preload="none"></audio>
 
   <script>
@@ -808,6 +873,10 @@
     /* State */
     let stations = [], queue = [], queueIndex = -1, musicFiles = [], history = loadJSON("navi-radio-history", []);
     let currentType = null, currentItem = null, shuffled = false, repeatMode = "off";
+    let currentIcy = null, nowArtistFallback = "", icyToken = 0;
+    let dialPos = 0.5, dialDragging = false;
+    let noiseGain = null, stationGainNode = null, noiseStarted = false;
+    let recorder = null, recChunks = [], recStart = 0, recTimer = null, tapes = [];
     let audioContext = null, analyser = null, timeAnalyser = null, mediaSource = null, frequencyData = null, timeData = null;
     let visualizerFrame = null, VW = 0, VH = 0, peaks = [];
     let toastTimer = null, favorites = loadJSON("navi-radio-favorites", []), playlists = loadJSON("navi-radio-playlists", []);
@@ -921,8 +990,9 @@
       document.querySelectorAll(".view").forEach(s => s.classList.remove("active"));
       $("view-" + view)?.classList.add("active");
       document.querySelectorAll(".nav-button[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === view));
-      const contexts = { radio:"./radio", music:"./music", favorites:"./favorites", playlists:"./playlists", settings:"./settings" };
+      const contexts = { radio:"./radio", music:"./music", favorites:"./favorites", dial:"./tuner", playlists:"./playlists", settings:"./settings" };
       setContext(contexts[view] || "./navi");
+      if (view === "dial") renderDial();
     }
     document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(x => x.classList.remove("active")); t.classList.add("active");
@@ -948,14 +1018,14 @@
       try { await audio.play(); updatePlaybackUI(); persistSession(); }
       catch (e) { console.warn(e); setStatus("ERROR"); toast("playback failed — stream may be unavailable"); }
     }
-    function pauseAudio() { audio.pause(); updatePlaybackUI(); persistSession(); }
+    function pauseAudio() { audio.pause(); dialMixReset(); updatePlaybackUI(); persistSession(); }
     playButton.addEventListener("click", async () => { if (!audio.src) { toast("nothing loaded"); return; } audio.paused ? playAudio() : pauseAudio(); });
     $("now-play-btn").addEventListener("click", async () => { if (!audio.src) { toast("nothing loaded"); return; } audio.paused ? playAudio() : pauseAudio(); });
     audio.addEventListener("play", updatePlaybackUI);
     audio.addEventListener("pause", updatePlaybackUI);
-    audio.addEventListener("ended", () => { if (repeatMode === "one" && currentType === "local") { audio.currentTime = 0; playAudio(); } else nextTrack(); });
+    audio.addEventListener("ended", () => { if (currentType === "tape") { updatePlaybackUI(); return; } if (repeatMode === "one" && currentType === "local") { audio.currentTime = 0; playAudio(); } else nextTrack(); });
     audio.addEventListener("timeupdate", () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0 && currentType === "local") {
+      if (Number.isFinite(audio.duration) && audio.duration > 0 && (currentType === "local" || currentType === "tape")) {
         progressFill.style.width = (audio.currentTime / audio.duration * 100) + "%";
         currentTimeEl.textContent = formatTime(audio.currentTime); durationEl.textContent = formatTime(audio.duration);
       } else if (currentType === "radio") {
@@ -972,15 +1042,18 @@
       playButton.textContent = playing ? "Ⅱ" : "▶";
       $("now-play-btn").textContent = playing ? "Ⅱ pause" : "▶ play";
       const ml = $("mini-live"); if (ml) ml.hidden = !(playing && currentType === "radio" && currentItem);
+      const al = $("ambient-live"); if (al) al.hidden = !(playing && currentType === "radio" && currentItem);
       if (!currentItem) { setStatus("READY"); return; }
       if (playing) {
         if (currentType === "radio") { setStatus("LIVE"); liveTag.textContent = "LIVE"; nowLive.textContent = "● LIVE"; nowLive.className = "album-live"; }
+        else if (currentType === "tape") { setStatus("PLAYING"); liveTag.textContent = "TAPE"; nowLive.textContent = "▸ TAPE"; nowLive.className = "album-live cyan"; }
         else { setStatus("PLAYING"); liveTag.textContent = "LOCAL"; nowLive.textContent = "▶ PLAYING"; nowLive.className = "album-live pink"; }
       } else { setStatus("PAUSED"); liveTag.textContent = "PAUSED"; nowLive.textContent = "Ⅱ PAUSED"; nowLive.className = "album-live pink"; }
       if ("mediaSession" in navigator && currentItem) {
         try {
-          const title = currentType === "local" ? parseTrackName(currentItem.name).title : (currentItem.name || "unknown station");
-          const artist = currentType === "local" ? parseTrackName(currentItem.name).artist : (currentItem.country || "internet radio");
+          const icy = currentType === "radio" ? currentIcy : null;
+          const title = icy?.title || (currentType === "local" ? parseTrackName(currentItem.name).title : (currentItem.name || "unknown station"));
+          const artist = icy?.artist || (currentType === "local" ? parseTrackName(currentItem.name).artist : currentType === "tape" ? "tape deck" : (currentItem.country || "internet radio"));
           const art = currentType === "radio" && settings.showFavicon && currentItem.favicon ? currentItem.favicon : "";
           navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: currentType === "local" ? "local music" : "navi radio", artwork: art ? [{ src: art, sizes: "512x512" }] : [] });
           navigator.mediaSession.playbackState = playing ? "playing" : "paused";
@@ -1038,19 +1111,23 @@
         else { img.style.display = "none"; logo.style.display = ""; }
       }
       const cb = $("copy-url-btn"); cb.disabled = !(currentType === "radio" ? (currentItem?.url_resolved || currentItem?.url) : audio.src);
+      if (!$("ambient").hidden) syncAmbient();
       renderMusicNow();
     }
     $("now-fav-btn").addEventListener("click", () => { if (currentType === "radio" && currentItem) { toggleFavorite(currentItem); setNowMetaForRadio(currentItem); } });
     function setNowMetaForRadio(st) {
       const art = settings.showFavicon ? (st.favicon || "") : "";
+      nowArtistFallback = [st.country, st.language].filter(Boolean).join(" · ") || (st.tags || "internet radio");
+      currentIcy = null; icyToken++;
       setNowMeta({
-        title: st.name || "unknown station", artist: [st.country, st.language].filter(Boolean).join(" · ") || (st.tags || "internet radio"),
+        title: st.name || "unknown station", artist: nowArtistFallback,
         kicker: "radio signal", source: "RADIO", live: "LIVE",
         codec: st.codec ? `${st.codec}${st.bitrate ? " · " + st.bitrate + "k" : ""}` : (st.bitrate ? st.bitrate + " KBPS" : null),
         fav: isFavorite(st), art, homepage: st.homepage || "",
         cells: { source: streamHost(st.url_resolved || st.url), bitrate: `${st.bitrate ? st.bitrate + " kbps" : "variable"}${st.codec ? " · " + st.codec : ""}`, location: [st.country, st.state].filter(Boolean).join(", ") || "internet", stats: `${st.votes ?? 0} votes · ${st.clickcount ?? 0} clicks` }
       });
       bitrateLive.textContent = st.bitrate ? st.bitrate + "k " : "";
+      setTimeout(() => { if (currentType === "radio" && currentItem?.stationuuid === st.stationuuid && !audio.paused) refreshIcy(); }, 4000);
     }
     async function setNowMetaForLocal(item, file) {
       const p = parseTrackName(item.name);
@@ -1244,7 +1321,7 @@
       const file = await item.file.getFile();
       if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
       audio.src = URL.createObjectURL(file);
-      currentType = "local"; currentItem = item; queue = musicFiles; queueIndex = index;
+      currentType = "local"; currentItem = item; queue = musicFiles; queueIndex = index; dialMixReset();
       const p = parseTrackName(item.name);
       setNowMetaForLocal(item, file); setContext("./music");
       progressFill.style.width = "0%"; progressBuffer.style.width = "0%";
@@ -1336,11 +1413,13 @@
             <div class="radio-tags">${escapeHtml(stationTags(st))}</div></div>
             ${st.bitrate ? `<span class="radio-bitrate">${st.bitrate}k</span>` : ""}
           </button>
-          <button class="radio-heart ${fav ? "favorite" : ""}" data-favorite-index="${i}" title="${fav ? "Remove favorite" : "Add favorite"}">${fav ? "♥" : "♡"}</button>
+          <div class="card-actions"><button class="radio-heart" data-share-index="${i}" title="copy station link">⧉</button><button class="radio-heart ${fav ? "favorite" : ""}" data-favorite-index="${i}" title="${fav ? "Remove favorite" : "Add favorite"}">${fav ? "♥" : "♡"}</button></div>
         </div>`;
       }).join("");
       stationList.querySelectorAll("[data-radio-index]").forEach(b => b.addEventListener("click", () => playRadioAt(stations, Number(b.dataset.radioIndex))));
+      stationList.querySelectorAll("[data-share-index]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); shareStation(stations[Number(b.dataset.shareIndex)]); }));
       stationList.querySelectorAll("[data-favorite-index]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); const st = stations[Number(b.dataset.favoriteIndex)]; if (st) { toggleFavorite(st); if (currentType === "radio" && currentItem?.stationuuid === st.stationuuid) setNowMetaForRadio(currentItem); } }));
+      renderDial();
     }
     /* Playback fades — no hard cuts between stations */
     let fadeTimer = null;
@@ -1391,6 +1470,7 @@
       const st = list[index]; if (!st) return;
       const url = st.url_resolved || st.url; if (!url) { toast("station has no playable stream"); return; }
       currentType = "radio"; currentItem = st;
+      dialMixReset();
       fadeSwap(url);
       queue = list;
       queueIndex = index;
@@ -1417,20 +1497,269 @@
         const active = currentType === "radio" && currentItem?.stationuuid === st.stationuuid;
         return `<div class="radio-card ${active ? "active" : ""}">
           <button class="radio-main" data-favorite-play="${i}"><div style="min-width:0;"><div class="radio-name">${escapeHtml(st.name || "unnamed station")}</div><div class="radio-tags">${escapeHtml(st.tags || st.country || "internet radio")}</div></div></button>
-          <button class="radio-heart favorite" data-favorite-remove="${i}">♥</button></div>`;
+          <div class="card-actions"><button class="radio-heart" data-fav-share="${i}" title="copy station link">⧉</button><button class="radio-heart favorite" data-favorite-remove="${i}" title="remove favorite">♥</button></div></div>`;
       }).join("");
       favoriteList.querySelectorAll("[data-favorite-play]").forEach(b => b.addEventListener("click", () => { const st = favorites[Number(b.dataset.favoritePlay)]; if (st) playFavorite(st); }));
+      favoriteList.querySelectorAll("[data-fav-share]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); shareStation(favorites[Number(b.dataset.favShare)]); }));
       favoriteList.querySelectorAll("[data-favorite-remove]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); favorites.splice(Number(b.dataset.favoriteRemove), 1); saveJSON("navi-radio-favorites", favorites); renderFavorites(); renderStations(); toast("removed from favorites"); }));
+      renderDial();
     }
     async function playFavorite(st) {
       const url = st.url_resolved || st.url; if (!url) { toast("favorite has no playable URL"); return; }
-      currentType = "radio"; currentItem = st; fadeSwap(url);
+      currentType = "radio"; currentItem = st; dialMixReset(); fadeSwap(url);
       queue = favorites; queueIndex = favorites.findIndex(x => x.stationuuid === st.stationuuid);
       setNowMetaForRadio(st); setContext("./favorites");
       progress.classList.toggle("is-live", true);
       currentTimeEl.textContent = "LIVE"; durationEl.textContent = "∞";
       renderFavorites(); renderQueue(); pushHistory({ kind: "radio", name: st.name, sub: st.country || "fav", uuid: st.stationuuid });
       await playAudio();
+    }
+
+    /* ============ Tuner dial — physical radio, static between stations ============ */
+    function dialList() { return stations.length ? stations : favorites; }
+    async function ensureDialAudio() {
+      await initializeAudio();
+      if (!audioContext || !mediaSource) return false;
+      if (!stationGainNode) {
+        try { mediaSource.disconnect(); } catch {}
+        stationGainNode = audioContext.createGain(); stationGainNode.gain.value = 1;
+        mediaSource.connect(stationGainNode); stationGainNode.connect(analyser);
+      }
+      if (!noiseStarted) {
+        const len = audioContext.sampleRate * 2;
+        const buf = audioContext.createBuffer(1, len, audioContext.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        const src = audioContext.createBufferSource(); src.buffer = buf; src.loop = true;
+        const filt = audioContext.createBiquadFilter(); filt.type = "bandpass"; filt.frequency.value = 1800; filt.Q.value = 0.6;
+        noiseGain = audioContext.createGain(); noiseGain.gain.value = 0;
+        src.connect(filt); filt.connect(noiseGain); noiseGain.connect(analyser);
+        src.start(); noiseStarted = true;
+      }
+      return true;
+    }
+    function dialMixReset() {
+      if (!audioContext) return;
+      const t = audioContext.currentTime;
+      if (noiseGain) noiseGain.gain.setTargetAtTime(0, t, 0.05);
+      if (stationGainNode) stationGainNode.gain.setTargetAtTime(1, t, 0.05);
+    }
+    function dialNearest(pos) {
+      const list = dialList();
+      if (!list.length) return { i: -1, d: 1, spacing: 1 };
+      const sp = list.length === 1 ? 1 : 1 / (list.length - 1);
+      let best = 0, bd = 1e9;
+      list.forEach((st, i) => { const p = list.length === 1 ? 0.5 : i / (list.length - 1); const dd = Math.abs(p - pos); if (dd < bd) { bd = dd; best = i; } });
+      return { i: best, d: bd, spacing: sp };
+    }
+    function positionNeedle() {
+      const needle = $("dial-needle"); if (!needle) return;
+      needle.style.left = (dialPos * 100) + "%";
+      const mhz = $("dial-mhz"); if (mhz) mhz.textContent = (87.5 + dialPos * (108 - 87.5)).toFixed(1);
+      const n = dialNearest(dialPos), list = dialList(), label = $("dial-station-name");
+      if (label) {
+        if (n.i < 0) { label.textContent = "no stations — search first"; label.classList.remove("locked"); return; }
+        const locked = n.d < n.spacing * 0.22;
+        label.textContent = (locked ? "◉ " : "○ ") + (list[n.i].name || "unnamed station");
+        label.classList.toggle("locked", locked);
+      }
+    }
+    function updateDialMix() {
+      if (!audioContext || !noiseGain || !stationGainNode) return;
+      const t = audioContext.currentTime;
+      const n = dialNearest(dialPos);
+      const norm = n.i < 0 ? 1 : Math.min(1, n.d / (n.spacing * 0.85));
+      const amt = dialDragging ? Math.min(1, norm * 1.6) : 0;
+      noiseGain.gain.setTargetAtTime(amt * 0.38, t, 0.06);
+      stationGainNode.gain.setTargetAtTime(1 - amt * 0.85, t, 0.06);
+    }
+    function renderDial() {
+      const markers = $("dial-markers"); if (!markers) return;
+      const list = dialList();
+      markers.innerHTML = list.map((st, i) => {
+        const p = list.length === 1 ? 0.5 : i / (list.length - 1);
+        return `<button class="dial-marker" style="left:${(p * 100).toFixed(3)}%" data-dial-i="${i}" title="${escapeHtml(st.name || "unnamed station")}"></button>`;
+      }).join("");
+      markers.querySelectorAll("[data-dial-i]").forEach(b => b.addEventListener("click", () => tuneDialTo(Number(b.dataset.dialI))));
+      const c = $("dial-count");
+      if (c) c.textContent = list.length ? list.length + " presets" : "search stations first";
+      positionNeedle();
+    }
+    function dialSetFromEvent(e) {
+      const band = $("dial-band"); const r = band.getBoundingClientRect();
+      dialPos = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      positionNeedle(); updateDialMix();
+    }
+    async function tuneDialTo(i) {
+      const list = dialList(); const st = list[i]; if (!st) return;
+      dialPos = list.length === 1 ? 0.5 : i / (list.length - 1);
+      positionNeedle(); dialMixReset();
+      if (list === stations) await playRadioAt(stations, i);
+      else await playFavorite(st);
+    }
+    (function wireDial() {
+      const band = $("dial-band"); if (!band) return;
+      band.addEventListener("pointerdown", async e => {
+        if (e.target.closest("[data-dial-i]")) return;
+        if (!await ensureDialAudio()) return;
+        dialDragging = true;
+        try { band.setPointerCapture(e.pointerId); } catch {}
+        dialSetFromEvent(e); e.preventDefault();
+      });
+      band.addEventListener("pointermove", e => { if (dialDragging) dialSetFromEvent(e); });
+      band.addEventListener("pointerup", () => { if (!dialDragging) return; dialDragging = false; const n = dialNearest(dialPos); if (n.i >= 0) tuneDialTo(n.i); else dialMixReset(); });
+      band.addEventListener("pointercancel", () => { dialDragging = false; dialMixReset(); });
+    })();
+
+    /* ============ ICY live-song metadata ============ */
+    async function fetchIcyTitle(url, timeoutMs = 9000) {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { headers: { "Icy-MetaData": "1", "Range": "bytes=0-32767" }, signal: ctrl.signal });
+        const metaInt = parseInt(res.headers.get("icy-metaint") || "", 10);
+        if (!Number.isFinite(metaInt) || metaInt < 0 || !res.body) return null;
+        const reader = res.body.getReader();
+        let buf = new Uint8Array(0);
+        try {
+          while (buf.length < metaInt + 2) {
+            const { done, value } = await reader.read();
+            if (done || !value) break;
+            const nb = new Uint8Array(buf.length + value.length); nb.set(buf); nb.set(value, buf.length); buf = nb;
+            if (buf.length > 65536) break;
+          }
+        } finally { try { reader.cancel(); } catch {} }
+        if (buf.length <= metaInt) return null;
+        const metaLen = buf[metaInt] * 16;
+        if (metaLen <= 0 || buf.length < metaInt + 1 + metaLen) return null;
+        const meta = new TextDecoder("utf-8").decode(buf.slice(metaInt + 1, metaInt + 1 + metaLen));
+        const m = meta.match(/StreamTitle='([^']*)'/);
+        return m ? m[1].trim() : null;
+      } catch { return null; } finally { clearTimeout(to); }
+    }
+    function parseIcy(raw) {
+      const i = raw.indexOf(" - ");
+      if (i > 0) return { artist: raw.slice(0, i).trim(), title: raw.slice(i + 3).trim() };
+      return { artist: "", title: raw };
+    }
+    async function refreshIcy() {
+      if (currentType !== "radio" || !currentItem || audio.paused) return;
+      const url = currentItem.url_resolved || currentItem.url; if (!url) return;
+      const tok = ++icyToken;
+      const raw = await fetchIcyTitle(url);
+      if (tok !== icyToken) return;
+      if (raw) {
+        const p = parseIcy(raw);
+        currentIcy = { artist: p.artist || nowArtistFallback, title: p.title || raw };
+      } else currentIcy = null;
+      applyIcy();
+    }
+    function applyIcy() {
+      if (currentType !== "radio" || !currentItem) return;
+      const txt = currentIcy ? `♪ ${currentIcy.artist} – ${currentIcy.title}` : nowArtistFallback;
+      $("now-artist").textContent = txt; $("side-artist").textContent = txt; $("mini-artist").textContent = txt;
+      updateAmbientSong();
+      updatePlaybackUI();
+    }
+    setInterval(() => { if (currentType === "radio" && currentItem && !audio.paused) refreshIcy(); }, 30000);
+
+    /* ============ Tape deck — record the stream, session only ============ */
+    function formatTapeClock(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+    async function startRecording() {
+      if (!audio.src) { toast("nothing loaded to record"); return; }
+      try {
+        await initializeAudio();
+        if (typeof audio.captureStream !== "function" || typeof MediaRecorder === "undefined") { toast("recording not supported here"); return; }
+        const stream = audio.captureStream();
+        const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
+        recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+        recChunks = [];
+        recorder.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+        recorder.onstop = finishRecording;
+        recorder.start(1000); recStart = Date.now();
+        const rb = $("rec-btn"); rb.classList.add("on"); rb.innerHTML = `■ <span id="rec-time">0:00</span>`;
+        recTimer = setInterval(() => { const el = $("rec-time"); if (el) el.textContent = formatTapeClock((Date.now() - recStart) / 1000); }, 1000);
+        toast("● recording <b>tape</b>…");
+      } catch (err) { console.warn("rec failed", err); toast("recording not supported here"); }
+    }
+    function stopRecording() { if (recorder && recorder.state === "recording") recorder.stop(); }
+    function finishRecording() {
+      clearInterval(recTimer);
+      const rb = $("rec-btn"); rb.classList.remove("on"); rb.textContent = "● rec";
+      const blob = new Blob(recChunks, { type: (recorder && recorder.mimeType) || "audio/webm" });
+      recChunks = []; recorder = null;
+      if (!blob.size) { toast("tape came out blank"); return; }
+      const url = URL.createObjectURL(blob);
+      const when = new Date();
+      const name = `${currentItem?.name || "radio"} · ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      tapes.unshift({ name, url, blob, at: when.getTime(), dur: (Date.now() - recStart) / 1000 });
+      renderTapes();
+      toast(`tape saved — <b>${escapeHtml(name)}</b>`);
+    }
+    function renderTapes() {
+      const sec = $("tapes-section"); if (!sec) return;
+      sec.style.display = tapes.length ? "" : "none";
+      $("tape-count").textContent = tapes.length ? `${tapes.length} · this session` : "session only";
+      $("tape-list").innerHTML = tapes.map((t, i) =>
+        `<div class="radio-card"><button class="radio-main" data-tape-play="${i}"><div style="min-width:0"><div class="radio-name">▸ ${escapeHtml(t.name)}</div><div class="radio-tags">tape · ${formatTapeClock(t.dur)} · ${formatBytes(t.blob.size)} · webm</div></div></button><div class="card-actions"><a class="radio-heart" href="${t.url}" download="navi-radio-tape-${t.at}.webm" title="download tape">↓</a><button class="radio-heart" data-tape-del="${i}" title="delete tape">✕</button></div></div>`
+      ).join("");
+      $("tape-list").querySelectorAll("[data-tape-play]").forEach(b => b.addEventListener("click", () => playTape(Number(b.dataset.tapePlay))));
+      $("tape-list").querySelectorAll("[data-tape-del]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); const t = tapes[Number(b.dataset.tapeDel)]; if (t) URL.revokeObjectURL(t.url); tapes.splice(Number(b.dataset.tapeDel), 1); renderTapes(); toast("tape erased"); }));
+    }
+    async function playTape(i) {
+      const t = tapes[i]; if (!t) return;
+      if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+      audio.src = t.url;
+      currentType = "tape"; currentItem = { name: t.name }; dialMixReset();
+      setNowMeta({ title: t.name, artist: "reel-to-reel · this session", kicker: "tape deck", source: "TAPE", live: "TAPE", codec: "WEBM/OPUS", fav: false, art: "", homepage: "", cells: { source: "memory · session only", bitrate: formatBytes(t.blob.size), location: "tape deck", stats: "recorded " + new Date(t.at).toLocaleTimeString() } });
+      setContext("./tapes"); progress.classList.toggle("is-live", false);
+      progressFill.style.width = "0%"; progressBuffer.style.width = "0%";
+      renderTapes(); await playAudio();
+    }
+    $("rec-btn").addEventListener("click", () => { (recorder && recorder.state === "recording") ? stopRecording() : startRecording(); });
+
+    /* ============ Ambient mode — fullscreen visualizer vibe ============ */
+    function openAmbient(soft) {
+      if (!currentItem && !soft) { toast("nothing playing"); return; }
+      const st = currentItem;
+      $("ambient-title").textContent = !st ? "navi radio" : currentType === "local" ? parseTrackName(st.name).title : (st.name || "navi radio");
+      $("ambient-kicker").textContent = currentType === "local" ? "local file" : currentType === "tape" ? "tape deck" : "radio signal";
+      updateAmbientSong();
+      const al = $("ambient-live"); if (al) al.hidden = !(currentType === "radio" && !audio.paused && st);
+      if ($("ambient").hidden) $("ambient").hidden = false;
+    }
+    function updateAmbientSong() {
+      const el = $("ambient-song"); if (!el || $("ambient").hidden) return;
+      if (currentIcy) el.textContent = `♪ ${currentIcy.artist} – ${currentIcy.title}`;
+      else if (currentType === "radio") el.textContent = currentItem ? (nowArtistFallback || "internet radio") : "—";
+      else if (currentType === "local") el.textContent = currentItem ? parseTrackName(currentItem.name).artist : "—";
+      else if (currentType === "tape") el.textContent = "reel-to-reel · this session";
+      else el.textContent = "—";
+    }
+    function syncAmbient() { if (!$("ambient").hidden) openAmbient(true); }
+    function closeAmbient() { $("ambient").hidden = true; }
+    $("ambient-btn").addEventListener("click", () => openAmbient(false));
+    $("ambient").addEventListener("click", closeAmbient);
+
+    /* ============ Station cards — shareable links ============ */
+    async function shareStation(st) {
+      if (!st || !st.stationuuid) { toast("can't share this station"); return; }
+      const url = `${location.origin}${location.pathname}?station=${encodeURIComponent(st.stationuuid)}`;
+      try { await navigator.clipboard.writeText(url); toast("station link <b>copied</b> ⧉"); }
+      catch { toast("copy failed — clipboard blocked"); }
+    }
+    async function tuneSharedStation(uuid) {
+      try { history.replaceState(null, "", location.pathname); } catch {}
+      let idx = stations.findIndex(s => s.stationuuid === uuid);
+      if (idx < 0) {
+        try {
+          const res = await fetch(`${RADIO_API}/json/stations/byuuid/${encodeURIComponent(uuid)}`);
+          const arr = await res.json();
+          const st = arr && arr[0];
+          if (st && (st.url_resolved || st.url)) { stations = [st]; queue = stations; stationCount.textContent = "1"; renderStations(); idx = 0; }
+        } catch {}
+      }
+      if (idx >= 0) { showView("radio"); toast("tuned via <b>station card</b> ⧉"); playRadioAt(stations, idx); }
+      else toast("shared station not found");
     }
     function exportFavorites() {
       const blob = new Blob([JSON.stringify(favorites, null, 2)], { type: "application/json" });
@@ -1759,6 +2088,7 @@
     $("keys-modal").addEventListener("click", e => { if (e.target.id === "keys-modal") e.target.classList.remove("open"); });
     document.addEventListener("keydown", async e => {
       const typing = ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName);
+      if (e.key === "Escape" && !$("ambient").hidden) { closeAmbient(); return; }
       if (e.key === "?" || (e.shiftKey && e.code === "Slash")) { $("keys-modal").classList.toggle("open"); return; }
       if (typing) { if (e.key === "Escape") e.target.blur(); return; }
       switch (e.code) {
@@ -1775,6 +2105,7 @@
         case "KeyR": showView("radio"); break;
         case "KeyM": showView("music"); break;
         case "KeyF": showView("favorites"); break;
+        case "KeyT": showView("dial"); break;
         case "KeyS": showView("settings"); break;
       }
     });
@@ -1782,7 +2113,9 @@
     /* Init */
     applySettings(); updateMuteUI(); updateRepeatUI(); renderFavorites(); renderHistory(); renderPlaylists();
     resizeVisualizer(); requestAnimationFrame(drawVisualizer);
-    restoreSession(); updateMusicDirUI(); renderMusic(); restoreMusicDir(); searchRadio();
+    restoreSession(); updateMusicDirUI(); renderMusic(); restoreMusicDir();
+    const __sharedStation = new URLSearchParams(location.search).get("station");
+    searchRadio().then(() => { if (__sharedStation) tuneSharedStation(__sharedStation); });
 
     /* PWA — service worker */
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {

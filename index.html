@@ -464,6 +464,12 @@
     #dial-mhz { font-size: 44px; color: var(--neon-green); text-shadow: 0 0 18px rgba(57,255,20,0.5); font-variant-numeric: tabular-nums; }
     .dial-unit { color: var(--dim); font-size: 11px; letter-spacing: 0.2em; }
     .dial-station { text-align: center; margin: 8px 0 18px; font-size: 13px; color: var(--muted); min-height: 1.6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dial-station-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 8px 0 18px; }
+    .dial-station-row .dial-station { margin: 0; min-height: 0; }
+    .dial-open { display: none; }
+    .dial-open.show { display: inline-flex; }
+    .radio-card.spotlight { animation: spotlight 2.2s ease; border-color: var(--neon-pink); }
+    @keyframes spotlight { 0%,100% { box-shadow: 0 0 0 0 rgba(255,16,240,0); } 30%,70% { box-shadow: 0 0 26px 3px rgba(255,16,240,0.55); } }
     .dial-station.locked { color: var(--neon-pink); text-shadow: 0 0 12px rgba(255,16,240,0.6); }
     .dial-band { position: relative; height: 64px; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
     .dial-band::before { content: ""; position: absolute; left: 0; right: 0; top: 26px; height: 12px; background: linear-gradient(90deg, rgba(255,16,240,0.14), rgba(0,255,255,0.14), rgba(57,255,20,0.14)); pointer-events: none; }
@@ -482,6 +488,27 @@
     .ambient-title { font-size: clamp(28px, 6vw, 64px); color: var(--text); text-shadow: 0 0 30px rgba(255,16,240,0.5); overflow-wrap: anywhere; }
     .ambient-song { margin-top: 12px; font-size: clamp(14px, 2.4vw, 22px); color: var(--neon-green); }
     .ambient-hint { margin-top: 34px; color: var(--dim); font-size: 10px; letter-spacing: 0.2em; }
+    /* ---------- ambient v2: its own world ---------- */
+    .ambient { background: rgba(2,2,4,0.72); overflow: hidden; }
+    .ambient-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .ambient-blobs .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; animation: blobdrift 26s ease-in-out infinite alternate; }
+    .ambient-blobs .b1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -14vmax; background: radial-gradient(circle, rgba(255,16,240,0.20), transparent 70%); }
+    .ambient-blobs .b2 { width: 52vmax; height: 52vmax; right: -14vmax; bottom: -16vmax; background: radial-gradient(circle, rgba(0,255,255,0.16), transparent 70%); animation-duration: 34s; animation-delay: -8s; }
+    .ambient-blobs .b3 { width: 36vmax; height: 36vmax; left: 30%; top: 42%; background: radial-gradient(circle, rgba(57,255,20,0.12), transparent 70%); animation-duration: 40s; animation-delay: -16s; }
+    @keyframes blobdrift { from { transform: translate(0,0) scale(1); } to { transform: translate(6vmax,4vmax) scale(1.15); } }
+    .ambient-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ambient-kana { position: absolute; inset: -10% 0; overflow: hidden; opacity: 0.055; color: var(--neon-cyan); font-size: 15px; line-height: 1.9; letter-spacing: 0.4em; pointer-events: none; white-space: pre-wrap; animation: kanadrift 90s linear infinite; }
+    @keyframes kanadrift { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+    .ambient-glass { position: relative; background: rgba(5,5,9,0.42); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 44px 56px; box-shadow: 0 0 60px rgba(255,16,240,0.10), 0 24px 80px rgba(0,0,0,0.5); max-width: min(88vw, 720px); }
+    .ambient-title { animation: titlefloat 7s ease-in-out infinite; }
+    @keyframes titlefloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .ambient-song { transition: opacity 0.18s ease, transform 0.18s ease; }
+    .ambient-song.song-swap { opacity: 0; transform: translateY(6px); }
+    @media (max-width: 700px) { .ambient-glass { padding: 30px 24px; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ambient-blobs .blob, .ambient-title, .ambient-kana { animation: none; }
+      .ambient-canvas { display: none; }
+    }
     .album-live.cyan { color: var(--neon-cyan); border-color: rgba(0,255,255,0.35); }
     .card-actions { display: flex; }
     a.radio-heart { text-decoration: none; }
@@ -489,8 +516,8 @@
 
     @media (max-width: 1100px) {
       :root { --sidebar-width: 64px; --right-width: 0px; }
-      .brand { justify-content: center; padding: 0; }
-      .brand-name, .brand-version, .nav-label, .nav-button span:not(.nav-icon), .machine-status span, .kbd-hint, .nav-count { display: none; }
+      .brand { justify-content: center; padding: 0 10px; }
+      .brand-name, .brand-version, .brand-kana, .nav-label, .nav-button span:not(.nav-icon), .machine-status span, .kbd-hint, .nav-count { display: none; }
       .nav-button { justify-content: center; padding: 12px 0; }
       .nav-button::before { display: none; }
       .sidebar-bottom { align-items: center; }
@@ -529,7 +556,7 @@
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
         <div class="brand-kana">ラジオ</div>
-        <div class="brand-version">0.7</div>
+        <div class="brand-version">0.8</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
@@ -623,7 +650,10 @@
             <div class="panel-title">tuner <span class="count" id="dial-count"></span></div>
             <div class="dial-wrap">
               <div class="dial-readout"><span id="dial-mhz">--.-</span><span class="dial-unit">MHz</span></div>
-              <div class="dial-station" id="dial-station-name">drag the needle to tune</div>
+              <div class="dial-station-row">
+                <div class="dial-station" id="dial-station-name">drag the needle to tune</div>
+                <button class="btn dial-open" id="dial-open-radio" title="show this station in the radio list">→ open in radio</button>
+              </div>
               <div class="dial-band" id="dial-band">
                 <div class="dial-scale"></div>
                 <div class="dial-markers" id="dial-markers"></div>
@@ -692,7 +722,7 @@
 
         <!-- PLAYLISTS VIEW -->
         <section class="view" id="view-playlists">
-          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.7</span></div>
+          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.8</span></div>
           <div class="toolbar">
             <input type="search" id="playlist-name" placeholder="new playlist name..." autocomplete="off" style="flex:0 1 240px" />
             <button class="btn accent" id="create-playlist-btn">+ create from queue</button>
@@ -750,7 +780,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.7 · layered live metadata (SomaFM / Icecast / ICY) + tapes library (IndexedDB) + tape sharing</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.8 · ambient dreamscape + tuner handoff + tapes library</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -850,7 +880,10 @@
   </div>
 
   <div class="ambient" id="ambient" hidden>
-    <div class="ambient-inner">
+    <div class="ambient-blobs" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
+    <canvas class="ambient-canvas" id="ambient-canvas" aria-hidden="true"></canvas>
+    <div class="ambient-kana" id="ambient-kana" aria-hidden="true"></div>
+    <div class="ambient-inner ambient-glass">
       <div class="ambient-kicker"><span class="mini-live" id="ambient-live" hidden></span><span id="ambient-kicker">radio signal</span></div>
       <div class="ambient-title" id="ambient-title">navi radio</div>
       <div class="ambient-song" id="ambient-song">—</div>
@@ -1638,10 +1671,27 @@
     }
     async function tuneDialTo(i) {
       const list = dialList(); const st = list[i]; if (!st) return;
+      lastTunedStation = st; syncDialOpenBtn();
       dialPos = list.length === 1 ? 0.5 : i / (list.length - 1);
       positionNeedle(); dialMixReset();
       if (list === stations) await playRadioAt(stations, i);
       else await playFavorite(st);
+    }
+    let lastTunedStation = null;
+    function syncDialOpenBtn() { const b = $("dial-open-radio"); if (b) b.classList.toggle("show", !!(lastTunedStation && lastTunedStation.stationuuid)); }
+    function openTunedInRadio() {
+      const st = lastTunedStation;
+      if (!st || !st.stationuuid) { toast("tune to a station first"); return; }
+      showView("radio");
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const idx = stations.findIndex(x => x.stationuuid === st.stationuuid);
+        const btn = idx >= 0 ? stationList.querySelector('[data-radio-index="' + idx + '"]') : null;
+        const card = btn ? btn.closest(".radio-card") : null;
+        if (!card) { toast("that station isn't in the current radio list"); return; }
+        card.scrollIntoView({ block: "center", behavior: "smooth" });
+        card.classList.remove("spotlight"); void card.offsetWidth; card.classList.add("spotlight");
+        setTimeout(() => card.classList.remove("spotlight"), 2300);
+      }));
     }
     (function wireDial() {
       const band = $("dial-band"); if (!band) return;
@@ -1655,6 +1705,9 @@
       band.addEventListener("pointermove", e => { if (dialDragging) dialSetFromEvent(e); });
       band.addEventListener("pointerup", () => { if (!dialDragging) return; dialDragging = false; const n = dialNearest(dialPos); if (n.i >= 0) tuneDialTo(n.i); else dialMixReset(); });
       band.addEventListener("pointercancel", () => { dialDragging = false; dialMixReset(); });
+      const openBtn = $("dial-open-radio");
+      if (openBtn) openBtn.addEventListener("click", openTunedInRadio);
+      syncDialOpenBtn();
     })();
 
     /* ============ ICY live-song metadata ============ */
@@ -1862,6 +1915,80 @@
     loadTapes();
 
     /* ============ Ambient mode — fullscreen visualizer vibe ============ */
+    /* ============ Ambient v2: its own dream visualizer ============ */
+    const ambientCanvas = $("ambient-canvas"), actx = ambientCanvas ? ambientCanvas.getContext("2d") : null;
+    const ambientKanaEl = $("ambient-kana");
+    let ambientRAF = 0, AW = 0, AH = 0;
+    const ambientParticles = [];
+    const AMBIENT_KANA = "アイウエオカキクケコサシスセソタチツテト0123456789∅♪";
+    const ambientReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function resizeAmbient() {
+      if (!ambientCanvas) return;
+      const r = ambientCanvas.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      AW = ambientCanvas.width = Math.max(1, Math.floor(r.width * dpr));
+      AH = ambientCanvas.height = Math.max(1, Math.floor(r.height * dpr));
+    }
+    function seedAmbientKana() {
+      if (!ambientKanaEl || ambientKanaEl.dataset.seeded) return;
+      ambientKanaEl.dataset.seeded = "1";
+      let s = "";
+      for (let i = 0; i < 1400; i++) s += AMBIENT_KANA[Math.floor(Math.random() * AMBIENT_KANA.length)] + (Math.random() < 0.05 ? "\n" : " ");
+      ambientKanaEl.textContent = s;
+    }
+    function drawAmbient(t) {
+      ambientRAF = requestAnimationFrame(drawAmbient);
+      if (!actx) return;
+      if (!AW || !AH) resizeAmbient();
+      if (analyser && frequencyData) analyser.getByteFrequencyData(frequencyData);
+      const bins = frequencyData || new Uint8Array(0);
+      const band = (a, b) => { let s = 0, n = 0; for (let i = a; i < b && i < bins.length; i++) { s += bins[i]; n++; } return n ? s / n / 255 : 0; };
+      const bass = band(2, 24), mid = band(24, 160), high = band(160, 480);
+      const level = bass * 0.5 + mid * 0.3 + high * 0.2;
+      actx.clearRect(0, 0, AW, AH);
+      const cx = AW / 2, cy = AH / 2, time = t / 1000, dpr = window.devicePixelRatio || 1;
+      const maxR = Math.max(AW, AH) * 0.42;
+      // breathing concentric rings — bass drives the pulse
+      for (let r = 0; r < 5; r++) {
+        const phase = (time * 0.12 + r / 5) % 1;
+        const radius = phase * maxR + bass * maxR * 0.14;
+        const alpha = (1 - phase) * (0.10 + bass * 0.28);
+        const hue = r % 3 === 0 ? "255,16,240" : r % 3 === 1 ? "0,255,255" : "57,255,20";
+        actx.beginPath();
+        actx.arc(cx, cy, radius, 0, Math.PI * 2);
+        actx.strokeStyle = "rgba(" + hue + "," + alpha.toFixed(3) + ")";
+        actx.lineWidth = Math.max(1, (1 - phase) * 3 * dpr);
+        actx.stroke();
+      }
+      // soft particles drifting upward with overall level (capped for perf)
+      const target = Math.min(70, Math.floor(18 + level * 52));
+      while (ambientParticles.length < target) {
+        ambientParticles.push({ x: Math.random() * AW, y: AH + 10, s: 1 + Math.random() * 2.5, v: 0.2 + Math.random() * 0.7 + level * 1.4, hue: ["255,16,240", "0,255,255", "57,255,20"][Math.floor(Math.random() * 3)], a: 0.15 + Math.random() * 0.35, drift: Math.random() * Math.PI * 2 });
+      }
+      for (let i = ambientParticles.length - 1; i >= 0; i--) {
+        const p = ambientParticles[i];
+        p.y -= p.v * (AH / 800); p.drift += 0.01; p.x += Math.sin(p.drift) * 0.4;
+        if (p.y < -12) { ambientParticles.splice(i, 1); continue; }
+        actx.beginPath(); actx.arc(p.x, p.y, p.s * dpr, 0, Math.PI * 2);
+        actx.fillStyle = "rgba(" + p.hue + "," + (p.a * (0.4 + level)).toFixed(3) + ")";
+        actx.fill();
+      }
+      // liquid gradient wash — follows the mid/high balance
+      const washA = 0.05 + level * 0.08;
+      const g = actx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(AW, AH) * 0.5);
+      const c1 = mid >= high ? "255,16,240" : "0,255,255";
+      g.addColorStop(0, "rgba(" + c1 + "," + washA.toFixed(3) + ")");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      actx.fillStyle = g; actx.fillRect(0, 0, AW, AH);
+    }
+    function startAmbientViz() {
+      if (ambientReduced) return;
+      resizeAmbient(); seedAmbientKana();
+      if (!ambientRAF) drawAmbient(performance.now());
+    }
+    function stopAmbientViz() {
+      if (ambientRAF) { cancelAnimationFrame(ambientRAF); ambientRAF = 0; }
+      ambientParticles.length = 0;
+    }
     function openAmbient(soft) {
       if (!currentItem && !soft) { toast("nothing playing"); return; }
       const st = currentItem;
@@ -1869,18 +1996,22 @@
       $("ambient-kicker").textContent = currentType === "local" ? "local file" : currentType === "tape" ? "tape deck" : "radio signal";
       updateAmbientSong();
       const al = $("ambient-live"); if (al) al.hidden = !(currentType === "radio" && !audio.paused && st);
-      if ($("ambient").hidden) $("ambient").hidden = false;
+      if ($("ambient").hidden) { $("ambient").hidden = false; startAmbientViz(); }
     }
     function updateAmbientSong() {
       const el = $("ambient-song"); if (!el || $("ambient").hidden) return;
-      if (currentIcy) el.textContent = `♪ ${currentIcy.artist} – ${currentIcy.title}`;
-      else if (currentType === "radio") el.textContent = currentItem ? (nowArtistFallback || "internet radio") : "—";
-      else if (currentType === "local") el.textContent = currentItem ? parseTrackName(currentItem.name).artist : "—";
-      else if (currentType === "tape") el.textContent = "reel-to-reel · tape deck";
-      else el.textContent = "—";
+      let txt;
+      if (currentIcy) txt = `♪ ${currentIcy.artist} – ${currentIcy.title}`;
+      else if (currentType === "radio") txt = currentItem ? (nowArtistFallback || "internet radio") : "—";
+      else if (currentType === "local") txt = currentItem ? parseTrackName(currentItem.name).artist : "—";
+      else if (currentType === "tape") txt = "reel-to-reel · tape deck";
+      else txt = "—";
+      if (el.textContent === txt) return;
+      el.classList.add("song-swap");
+      setTimeout(() => { el.textContent = txt; el.classList.remove("song-swap"); }, 180);
     }
     function syncAmbient() { if (!$("ambient").hidden) openAmbient(true); }
-    function closeAmbient() { $("ambient").hidden = true; }
+    function closeAmbient() { $("ambient").hidden = true; stopAmbientViz(); }
     $("ambient-btn").addEventListener("click", () => openAmbient(false));
     $("ambient").addEventListener("click", closeAmbient);
 

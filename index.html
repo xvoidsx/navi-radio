@@ -364,7 +364,12 @@
     .now-mini .dot img { width: 100%; height: 100%; object-fit: cover; }
     .now-mini .t { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .now-mini .a { font-size: 9px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-    .now-mini .t.live { color: var(--neon-green); }
+    #mini-title.live { color: var(--neon-green); }
+    .mini-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-pink); box-shadow: 0 0 7px var(--neon-pink), 0 0 14px rgba(255,16,240,0.5); margin-right: 7px; vertical-align: 1px; animation: pulse 1.6s ease-in-out infinite; }
+    .mini-live[hidden] { display: none; }
+    #sleep-mini { color: var(--neon-cyan); cursor: pointer; }
+    #sleep-mini:empty { display: none; }
+    #sleep-mini:hover { color: var(--text); }
     .progress-wrap { flex: 1; min-width: 0; }
     .progress { position: relative; width: 100%; height: 14px; display: flex; align-items: center; cursor: pointer; }
     .progress-track { position: relative; width: 100%; height: 3px; background: rgba(255,255,255,0.10); overflow: hidden; }
@@ -462,7 +467,8 @@
       .main { right: 0; }
       .controls { right: 0; }
       .right-panel { display: none; }
-      .now-mini { display: none; }
+      .now-mini { display: flex; flex: 1 1 120px; width: auto; }
+      .now-mini .dot { display: none; }
     }
     @media (max-width: 700px) {
       .content { padding: 18px 14px 30px; }
@@ -489,7 +495,7 @@
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
         <div class="brand-kana">ラジオ</div>
-        <div class="brand-version">0.4</div>
+        <div class="brand-version">0.5</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
@@ -619,7 +625,7 @@
 
         <!-- PLAYLISTS VIEW -->
         <section class="view" id="view-playlists">
-          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.3</span></div>
+          <div class="panel-title">playlists <span class="count" id="playlist-count">local only · v0.5</span></div>
           <div class="toolbar">
             <input type="search" id="playlist-name" placeholder="new playlist name..." autocomplete="off" style="flex:0 1 240px" />
             <button class="btn accent" id="create-playlist-btn">+ create from queue</button>
@@ -677,7 +683,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.4 · wired rain + sleep timer + alarm</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.5 · persistent now-playing bar + sleep countdown + mobile polish</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -693,7 +699,7 @@
             </div>
             <div class="setting-card">
               <h3>about</h3>
-              <p><b style="color:var(--text);font-weight:normal">navi radio 0.3</b> — default radio + local music app for the navi linux distro.<br><br>Theme: <b style="color:var(--neon-pink);font-weight:normal">nightshadeNeon</b> by rav3ndust &amp; RyokoUmbra — neon pink / green / cyan / red on black &amp; white.<br><br>Single-file webapp. No tracking, no account.</p>
+              <p><b style="color:var(--text);font-weight:normal">navi radio 0.5</b> — default radio + local music app for the navi linux distro.<br><br>Theme: <b style="color:var(--neon-pink);font-weight:normal">nightshadeNeon</b> by rav3ndust &amp; RyokoUmbra — neon pink / green / cyan / red on black &amp; white.<br><br>Single-file webapp. No tracking, no account.</p>
             </div>
           </div>
         </section>
@@ -741,13 +747,13 @@
       <div class="now-mini">
         <div class="dot"><span id="mini-logo">∅</span><img id="mini-art" style="display:none" alt="" /></div>
         <div style="min-width:0;flex:1">
-          <div class="t" id="mini-title">nothing playing</div>
+          <div class="t"><span class="mini-live" id="mini-live" hidden></span><span id="mini-title">nothing playing</span></div>
           <div class="a" id="mini-artist">—</div>
         </div>
       </div>
       <div class="progress-wrap">
         <div class="progress" id="progress"><div class="progress-track"><div class="progress-buffer" id="progress-buffer"></div><div class="progress-fill" id="progress-fill"></div></div></div>
-        <div class="time"><span id="current-time">00:00</span><span class="right"><span id="bitrate-live"></span><span id="duration">--:--</span></span></div>
+        <div class="time"><span id="current-time">00:00</span><span class="right"><span id="sleep-mini" title="sleep timer — open settings"></span><span id="bitrate-live"></span><span id="duration">--:--</span></span></div>
       </div>
       <div class="extra">
         <button class="control-button" id="shuffle-button" title="Shuffle (X)">⤨</button>
@@ -965,6 +971,7 @@
       $("now-album").classList.toggle("playing", playing);
       playButton.textContent = playing ? "Ⅱ" : "▶";
       $("now-play-btn").textContent = playing ? "Ⅱ pause" : "▶ play";
+      const ml = $("mini-live"); if (ml) ml.hidden = !(playing && currentType === "radio" && currentItem);
       if (!currentItem) { setStatus("READY"); return; }
       if (playing) {
         if (currentType === "radio") { setStatus("LIVE"); liveTag.textContent = "LIVE"; nowLive.textContent = "● LIVE"; nowLive.className = "album-live"; }
@@ -1702,24 +1709,26 @@
     /* Sleep timer */
     let sleepTimer = null, sleepEndAt = 0, sleepTick = null;
     function setSleepTimer(mins) {
+      const sleepLabel = txt => { $("sleep-remaining").textContent = txt; const sm = $("sleep-mini"); if (sm) sm.textContent = txt ? "☾ " + txt : ""; };
       if (sleepTimer) { clearTimeout(sleepTimer); sleepTimer = null; }
       if (sleepTick) { clearInterval(sleepTick); sleepTick = null; }
-      $("sleep-remaining").textContent = "";
+      sleepLabel("");
       if (!(mins > 0)) { toast("sleep timer off"); return; }
       sleepEndAt = Date.now() + mins * 60000;
       const update = () => {
         const left = Math.max(0, sleepEndAt - Date.now());
-        $("sleep-remaining").textContent = left > 0 ? `-${Math.ceil(left / 60000)}m` : "";
+        sleepLabel(left > 0 ? `-${Math.ceil(left / 60000)}m` : "");
       };
       update(); sleepTick = setInterval(update, 20000);
       sleepTimer = setTimeout(() => {
         sleepTimer = null; if (sleepTick) { clearInterval(sleepTick); sleepTick = null; }
-        $("sleep-remaining").textContent = ""; $("set-sleep").value = "0";
+        sleepLabel(""); $("set-sleep").value = "0";
         if (!audio.paused) { toast("sleep timer — fading out…"); fadeOutThen(() => pauseAudio()); }
         else toast("sleep timer elapsed");
       }, mins * 60000);
       toast(`sleep timer set — <b>${mins} min</b>`);
     }
+    $("sleep-mini").addEventListener("click", () => showView("settings"));
 
     /* Alarm — clock radio */
     let alarmFiredKey = "";

@@ -112,6 +112,7 @@
     .brand-name { font-size: 13px; letter-spacing: 0.08em; }
     .brand-name em { font-style: normal; color: var(--neon-green); }
     .brand-version { margin-left: auto; color: var(--dim); font-size: 9px; border: 1px solid var(--border); padding: 2px 5px; }
+    .brand-kana { color: var(--dim); font-size: 10px; letter-spacing: 0.55em; margin-top: 3px; text-shadow: 0 0 8px rgba(57,255,20,0.35); }
     .nav { padding: 14px 9px; }
     .nav-label { padding: 7px 10px; color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; }
     .nav-button {
@@ -195,6 +196,11 @@
     .album-logo { position: relative; z-index: 0; color: var(--text); font-family: serif; font-size: 82px; text-shadow: 0 0 16px rgba(255,16,240,0.8), 0 0 45px rgba(57,255,20,0.25); }
     .album-live { position: absolute; z-index: 3; left: 8px; bottom: 8px; font-size: 9px; letter-spacing: 0.12em; padding: 3px 7px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-bright); color: var(--neon-green); }
     .album-live.pink { color: var(--neon-pink); border-color: var(--border-pink); }
+    .album.playing { animation: albumPulse 2.6s ease-in-out infinite; }
+    @keyframes albumPulse {
+      0%, 100% { box-shadow: inset 0 0 45px rgba(255,16,240,0.06), 0 0 30px rgba(0,0,0,0.5), 0 0 60px rgba(57,255,20,0.05); }
+      50% { box-shadow: inset 0 0 45px rgba(255,16,240,0.12), 0 0 30px rgba(0,0,0,0.5), 0 0 95px rgba(255,16,240,0.25), 0 0 50px rgba(57,255,20,0.14); }
+    }
 
     .track-info { min-width: 0; }
     .track-kicker { color: var(--neon-green); font-size: 10px; margin-bottom: 10px; letter-spacing: 0.1em; }
@@ -265,7 +271,8 @@
     .radio-main::before { content: ">"; color: transparent; transition: color 100ms ease; }
     .radio-main:hover::before { color: var(--neon-green); }
     .radio-card.active { border-color: rgba(57,255,20,0.35); box-shadow: 0 0 18px rgba(57,255,20,0.08); }
-    .radio-card.active .radio-main::before { color: var(--neon-green); }
+    .radio-card.active .radio-main::before { color: var(--neon-green); animation: liveBlink 1.6s ease-in-out infinite; }
+    @keyframes liveBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     .radio-fav { width: 26px; height: 26px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); flex: none; display: grid; place-items: center; font-size: 12px; background: #0a0a0c; }
     .radio-fav img { width: 100%; height: 100%; object-fit: cover; }
     .radio-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -481,7 +488,8 @@
       <div class="brand">
         <div class="brand-mark">∅</div>
         <div class="brand-name"><em>navi</em> radio</div>
-        <div class="brand-version">0.3</div>
+        <div class="brand-kana">ラジオ</div>
+        <div class="brand-version">0.4</div>
       </div>
       <nav class="nav">
         <div class="nav-label">sources</div>
@@ -525,7 +533,7 @@
         <section class="view active" id="view-radio">
           <div class="player-view">
             <div class="now-playing">
-              <div class="album">
+              <div class="album" id="now-album">
                 <div class="album-logo" id="now-logo">∅</div>
                 <img id="now-art" class="hidden" alt="station artwork" />
                 <div class="album-live" id="now-live">READY</div>
@@ -627,7 +635,7 @@
               <h3>visualizer</h3>
               <p>Full-window nightshadeNeon spectrum. Green is signal, pink/cyan are peaks.</p>
               <div class="setting-row"><span>enabled</span><div class="toggle" id="set-viz-on"></div></div>
-              <div class="setting-row"><span>style</span><select id="set-viz-style"><option value="bars">neon bars</option><option value="ascii">ascii terminal</option><option value="wave">wave scope</option></select></div>
+              <div class="setting-row"><span>style</span><select id="set-viz-style"><option value="bars">neon bars</option><option value="ascii">ascii terminal</option><option value="wave">wave scope</option><option value="rain">wired rain</option></select></div>
               <div class="setting-row"><span>intensity</span><input type="range" id="set-viz-intensity" min="0.2" max="1.5" step="0.05" style="width:140px" /></div>
               <div class="setting-row"><span>ambient glow</span><div class="toggle" id="set-glow-on"></div></div>
               <div class="setting-row"><span>scanlines</span><div class="toggle" id="set-scanlines"></div></div>
@@ -639,6 +647,9 @@
               <div class="setting-row"><span>resume last session</span><div class="toggle" id="set-resume"></div></div>
               <div class="setting-row"><span>default repeat</span><select id="set-repeat"><option value="off">off</option><option value="all">repeat all</option><option value="one">repeat one</option></select></div>
               <div class="setting-row"><span>24h clock</span><div class="toggle" id="set-clock24"></div></div>
+              <div class="setting-row"><span>sleep timer</span><select id="set-sleep"><option value="0">off</option><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option><option value="90">90 min</option></select><span id="sleep-remaining" style="color:var(--dim);font-size:10px"></span></div>
+              <div class="setting-row"><span>alarm</span><input type="time" id="set-alarm-time" value="07:00" style="width:110px" /><div class="toggle" id="set-alarm-on"></div></div>
+              <div class="setting-row"><span>alarm station</span><select id="set-alarm-station" style="max-width:170px"><option value="">first favorite</option></select></div>
             </div>
             <div class="setting-card">
               <h3>radio</h3>
@@ -666,7 +677,7 @@
             <div class="setting-card">
               <h3>app</h3>
               <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
-              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.3 · standalone-ready</span></div>
+              <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.4 · wired rain + sleep timer + alarm</span></div>
             </div>
             <div class="setting-card">
               <h3>keyboard</h3>
@@ -797,7 +808,7 @@
     let lastVolumeBeforeMute = 0.8;
     let musicDirHandle = null, musicDirName = loadJSON("navi-radio-musicdir-name", ""), musicNeedsGrant = false;
 
-    const DEFAULT_SETTINGS = { vizOn: true, vizStyle: "bars", vizIntensity: 0.9, glowOn: true, scanlines: true, volume: 0.8, resume: true, repeat: "off", clock24: true, tag: "electronic", limit: "60", httpsOnly: true, showFavicon: true };
+    const DEFAULT_SETTINGS = { vizOn: true, vizStyle: "bars", vizIntensity: 0.9, glowOn: true, scanlines: true, volume: 0.8, resume: true, repeat: "off", clock24: true, tag: "electronic", limit: "60", httpsOnly: true, showFavicon: true, alarmOn: false, alarmTime: "07:00", alarmStation: "" };
     let settings = Object.assign({}, DEFAULT_SETTINGS, loadJSON("navi-radio-settings", {}));
 
     /* Helpers */
@@ -872,6 +883,9 @@
       bindToggle($("set-resume"), settings.resume, v => settings.resume = v);
       $("set-repeat").value = settings.repeat;
       bindToggle($("set-clock24"), settings.clock24, v => settings.clock24 = v);
+      $("set-alarm-time").value = settings.alarmTime || "07:00";
+      bindToggle($("set-alarm-on"), settings.alarmOn, v => settings.alarmOn = v);
+      renderAlarmStations();
       $("set-tag").value = settings.tag;
       $("set-limit").value = String(settings.limit);
       bindToggle($("set-https"), settings.httpsOnly, v => settings.httpsOnly = v);
@@ -883,6 +897,9 @@
     $("set-viz-style").addEventListener("change", e => { settings.vizStyle = e.target.value; persistSettings(); toast(`visualizer → <b>${escapeHtml(settings.vizStyle)}</b>`); });
     $("set-viz-intensity").addEventListener("input", e => { settings.vizIntensity = Number(e.target.value); persistSettings(); });
     $("set-volume").addEventListener("input", e => { settings.volume = Number(e.target.value); persistSettings(); });
+    $("set-sleep").addEventListener("change", e => setSleepTimer(Number(e.target.value)));
+    $("set-alarm-time").addEventListener("change", e => { settings.alarmTime = e.target.value; persistSettings(); toast(`alarm → <b>${escapeHtml(settings.alarmTime)}</b>`); });
+    $("set-alarm-station").addEventListener("change", e => { settings.alarmStation = e.target.value; persistSettings(); });
     $("set-repeat").addEventListener("change", e => { settings.repeat = e.target.value; persistSettings(); });
     $("set-tag").addEventListener("change", e => { settings.tag = e.target.value; persistSettings(); searchRadio(); });
     $("set-limit").addEventListener("change", e => { settings.limit = e.target.value; persistSettings(); searchRadio(); });
@@ -945,6 +962,7 @@
 
     function updatePlaybackUI() {
       const playing = !audio.paused;
+      $("now-album").classList.toggle("playing", playing);
       playButton.textContent = playing ? "Ⅱ" : "▶";
       $("now-play-btn").textContent = playing ? "Ⅱ pause" : "▶ play";
       if (!currentItem) { setStatus("READY"); return; }
@@ -956,7 +974,9 @@
         try {
           const title = currentType === "local" ? parseTrackName(currentItem.name).title : (currentItem.name || "unknown station");
           const artist = currentType === "local" ? parseTrackName(currentItem.name).artist : (currentItem.country || "internet radio");
-          navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: currentType === "local" ? "local music" : "navi radio" });
+          const art = currentType === "radio" && settings.showFavicon && currentItem.favicon ? currentItem.favicon : "";
+          navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: currentType === "local" ? "local music" : "navi radio", artwork: art ? [{ src: art, sizes: "512x512" }] : [] });
+          navigator.mediaSession.playbackState = playing ? "playing" : "paused";
           navigator.mediaSession.setActionHandler("play", playAudio); navigator.mediaSession.setActionHandler("pause", pauseAudio);
           navigator.mediaSession.setActionHandler("previoustrack", previousTrack); navigator.mediaSession.setActionHandler("nexttrack", nextTrack);
         } catch {}
@@ -1268,7 +1288,7 @@
       else if (q) html += `<div class="search-hint">press <b>⏎</b> to search the radio directory for "${escapeHtml(query)}"</div>`;
       unifiedResults.innerHTML = html;
       unifiedResults.querySelectorAll("[data-u-local]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.uLocal); closeSearch(); showView("music"); playLocal(i); }));
-      unifiedResults.querySelectorAll("[data-u-radio]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.uRadio); closeSearch(); playRadio(i); }));
+      unifiedResults.querySelectorAll("[data-u-radio]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.uRadio); closeSearch(); playRadioAt(stations, i); }));
     }
 
     /* Radio */
@@ -1312,17 +1332,61 @@
           <button class="radio-heart ${fav ? "favorite" : ""}" data-favorite-index="${i}" title="${fav ? "Remove favorite" : "Add favorite"}">${fav ? "♥" : "♡"}</button>
         </div>`;
       }).join("");
-      stationList.querySelectorAll("[data-radio-index]").forEach(b => b.addEventListener("click", () => playRadio(Number(b.dataset.radioIndex))));
+      stationList.querySelectorAll("[data-radio-index]").forEach(b => b.addEventListener("click", () => playRadioAt(stations, Number(b.dataset.radioIndex))));
       stationList.querySelectorAll("[data-favorite-index]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); const st = stations[Number(b.dataset.favoriteIndex)]; if (st) { toggleFavorite(st); if (currentType === "radio" && currentItem?.stationuuid === st.stationuuid) setNowMetaForRadio(currentItem); } }));
     }
-    async function playRadio(index) {
-      const st = queue[index] || stations[index]; if (!st) return;
-      const url = st.url_resolved || st.url; if (!url) { toast("station has no playable stream"); return; }
-      currentType = "radio"; currentItem = st;
+    /* Playback fades — no hard cuts between stations */
+    let fadeTimer = null;
+    function setSrc(url) {
       if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
       audio.src = url;
-      queue = queue.length ? queue : stations;
-      queueIndex = queue.findIndex(x => x.stationuuid === st.stationuuid); if (queueIndex === -1) queueIndex = index;
+    }
+    function fadeSwap(url) {
+      if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+      const target = Number.isFinite(settings.volume) ? settings.volume : 0.8;
+      const startVol = audio.volume;
+      if (audio.paused || !audio.src || startVol <= 0.01) { setSrc(url); audio.volume = target; return; }
+      const steps = 8, stepMs = 30;
+      let n = 0;
+      fadeTimer = setInterval(() => {
+        n++;
+        audio.volume = Math.max(0, startVol * (1 - n / steps));
+        if (n >= steps) {
+          clearInterval(fadeTimer);
+          setSrc(url);
+          let m = 0;
+          fadeTimer = setInterval(() => {
+            m++;
+            audio.volume = Math.min(target, target * (m / steps));
+            if (m >= steps) { clearInterval(fadeTimer); fadeTimer = null; audio.volume = target; }
+          }, stepMs);
+        }
+      }, stepMs);
+    }
+    function fadeOutThen(fn) {
+      if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+      const startVol = audio.volume;
+      if (audio.paused || startVol <= 0.01) { if (fn) fn(); return; }
+      const steps = 12, stepMs = 60;
+      let n = 0;
+      fadeTimer = setInterval(() => {
+        n++;
+        audio.volume = Math.max(0, startVol * (1 - n / steps));
+        if (n >= steps) { clearInterval(fadeTimer); fadeTimer = null; if (fn) fn(); }
+      }, stepMs);
+    }
+    // `index` is into `list` — the caller names the list. The old version
+    // looked up queue[index] first, which played favorites[N] when you
+    // clicked stations[N] after visiting favorites (the queue is shared
+    // state). Clicking a station now means "play this list from here":
+    // the queue resets to the clicked list.
+    async function playRadioAt(list, index) {
+      const st = list[index]; if (!st) return;
+      const url = st.url_resolved || st.url; if (!url) { toast("station has no playable stream"); return; }
+      currentType = "radio"; currentItem = st;
+      fadeSwap(url);
+      queue = list;
+      queueIndex = index;
       setNowMetaForRadio(st); setContext("./radio");
       progressFill.style.width = "0%"; progressBuffer.style.width = "0%";
       progress.classList.toggle("is-live", true);
@@ -1337,7 +1401,7 @@
     function toggleFavorite(st) {
       if (isFavorite(st)) { favorites = favorites.filter(f => f.stationuuid !== st.stationuuid); toast("removed from favorites"); }
       else { favorites.push({ stationuuid: st.stationuuid, name: st.name, url: st.url, url_resolved: st.url_resolved, favicon: st.favicon, tags: st.tags, country: st.country, language: st.language, codec: st.codec, bitrate: st.bitrate, homepage: st.homepage, votes: st.votes, clickcount: st.clickcount }); toast("added to <b>favorites</b>"); }
-      saveJSON("navi-radio-favorites", favorites); renderStations(); renderFavorites();
+      saveJSON("navi-radio-favorites", favorites); renderStations(); renderFavorites(); renderAlarmStations();
     }
     function renderFavorites() {
       favoriteCount.textContent = favorites.length; $("nav-fav-count").textContent = favorites.length || "";
@@ -1353,7 +1417,7 @@
     }
     async function playFavorite(st) {
       const url = st.url_resolved || st.url; if (!url) { toast("favorite has no playable URL"); return; }
-      currentType = "radio"; currentItem = st; audio.src = url;
+      currentType = "radio"; currentItem = st; fadeSwap(url);
       queue = favorites; queueIndex = favorites.findIndex(x => x.stationuuid === st.stationuuid);
       setNowMetaForRadio(st); setContext("./favorites");
       progress.classList.toggle("is-live", true);
@@ -1383,7 +1447,7 @@
       $("playlist-list").querySelectorAll("[data-pl]").forEach(b => b.addEventListener("click", () => {
         const p = playlists[Number(b.dataset.pl)]; if (!p || !p.items.length) return;
         if (p.kind === "local" && musicFiles.length) { const idx = musicFiles.findIndex(m => m.name === p.items[0].name); playLocal(Math.max(0, idx)); }
-        else if (p.kind === "radio") { queue = p.items; queueIndex = -1; playRadio(0); }
+        else if (p.kind === "radio") { playRadioAt(p.items, 0); }
         toast(`loaded playlist <b>${escapeHtml(p.name)}</b>`);
       }));
       $("playlist-list").querySelectorAll("[data-pl-del]").forEach(b => b.addEventListener("click", () => { playlists.splice(Number(b.dataset.plDel), 1); saveJSON("navi-radio-playlists", playlists); renderPlaylists(); }));
@@ -1404,7 +1468,7 @@
         const idx = start + off; const name = item.name || "unnamed station";
         return `<button class="queue-item ${idx === queueIndex ? "active" : ""}" data-queue-index="${idx}"><div class="queue-index">${String(idx+1).padStart(2,"0")}</div><div class="queue-name">${escapeHtml(name)}</div></button>`;
       }).join("");
-      queueList.querySelectorAll("[data-queue-index]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.queueIndex); currentType === "local" ? playLocal(i) : playRadio(i); }));
+      queueList.querySelectorAll("[data-queue-index]").forEach(b => b.addEventListener("click", () => { const i = Number(b.dataset.queueIndex); currentType === "local" ? playLocal(i) : playRadioAt(queue, i); }));
     }
     function pushHistory(entry) {
       history = [{ ...entry, at: Date.now() }, ...history.filter(h => h.name !== entry.name)].slice(0, 25);
@@ -1416,7 +1480,7 @@
       historyList.querySelectorAll("[data-h]").forEach(b => b.addEventListener("click", () => {
         const h = history[Number(b.dataset.h)]; if (!h) return;
         if (h.kind === "local") { const idx = musicFiles.findIndex(m => m.name === h.name); if (idx >= 0) playLocal(idx); else toast("file no longer loaded"); }
-        else { const idx = stations.findIndex(s => s.stationuuid === h.uuid); if (idx >= 0) playRadio(idx); else { const f = favorites.find(f => f.stationuuid === h.uuid); if (f) playFavorite(f); else toast("station not in current list"); } }
+        else { const idx = stations.findIndex(s => s.stationuuid === h.uuid); if (idx >= 0) playRadioAt(stations, idx); else { const f = favorites.find(f => f.stationuuid === h.uuid); if (f) playFavorite(f); else toast("station not in current list"); } }
       }));
     }
     function pickRandomIndex() { if (queue.length <= 1) return queueIndex; let i; do { i = Math.floor(Math.random() * queue.length); } while (i === queueIndex); return i; }
@@ -1425,13 +1489,13 @@
       if (repeatMode === "one" && currentType === "local") { audio.currentTime = 0; playAudio(); return; }
       let n = shuffled ? pickRandomIndex() : queueIndex + 1;
       if (n >= queue.length) { if (repeatMode === "all" || currentType === "radio") n = 0; else if (shuffled) n = pickRandomIndex(); else return; }
-      currentType === "local" ? playLocal(n) : playRadio(n);
+      currentType === "local" ? playLocal(n) : playRadioAt(queue, n);
     }
     function previousTrack() {
       if (!queue.length) return;
       if (Number.isFinite(audio.currentTime) && audio.currentTime > 5 && currentType === "local") { audio.currentTime = 0; return; }
       let p = shuffled ? pickRandomIndex() : queueIndex - 1; if (p < 0) p = queue.length - 1;
-      currentType === "local" ? playLocal(p) : playRadio(p);
+      currentType === "local" ? playLocal(p) : playRadioAt(queue, p);
     }
 
     /* Session resume */
@@ -1509,6 +1573,7 @@
       vctx.fillStyle = "rgba(0,0,0,0.28)"; vctx.fillRect(0, 0, VW, VH);
       const style = settings.vizStyle || "bars";
       if (style === "wave") drawWave(t, I);
+      else if (style === "rain") drawRain(t, I);
       else if (style === "ascii") drawAscii(t, I);
       else drawBars(t, I);
       drawMini(t);
@@ -1581,6 +1646,40 @@
       drawLine(timeData, "rgba(57,255,20,0.55)", 2, 0);
       drawLine(timeData, "rgba(0,255,255,0.35)", 1, -6);
     }
+    const KANA = "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789∅";
+    let rainCols = [];
+    function drawRain(t, I) {
+      const fs = 15, cw = 15;
+      const cols = Math.max(1, Math.floor(VW / cw));
+      if (rainCols.length !== cols) {
+        rainCols = Array.from({ length: cols }, () => {
+          const len = 24 + ((Math.random() * 20) | 0);
+          let str = "";
+          for (let k = 0; k < len; k++) str += KANA[(Math.random() * KANA.length) | 0];
+          return { y: Math.random() * (VH + 200) - 100, str, off: (Math.random() * len) | 0 };
+        });
+      }
+      vctx.font = `${fs}px "JetBrains Mono", monospace`; vctx.textBaseline = "top";
+      const trail = 9;
+      for (let x = 0; x < cols; x++) {
+        const col = rainCols[x];
+        let a = analyser && frequencyData ? freqAt(x / cols) : 0;
+        if (a < 0.015) a = idleAmp(x, t);
+        a = Math.min(1, a * I);
+        col.y += (0.5 + a * 3.4) * 2.4;
+        if (col.y - trail * fs > VH + 20) { col.y = -20 - Math.random() * 120; col.off = (col.off + 7) % col.str.length; }
+        const hot = a > 0.62;
+        for (let j = 0; j < trail; j++) {
+          const yy = col.y - j * fs;
+          if (yy < -fs || yy > VH) continue;
+          const ch = col.str[(col.off + j) % col.str.length];
+          const fade = 1 - j / trail;
+          if (j === 0) vctx.fillStyle = hot ? `rgba(255,16,240,${0.9 * fade + 0.1})` : `rgba(220,255,220,${0.9 * fade + 0.1})`;
+          else vctx.fillStyle = hot ? `rgba(255,16,240,${0.55 * fade})` : `rgba(57,255,20,${0.6 * fade})`;
+          vctx.fillText(ch, x * cw + 2, yy);
+        }
+      }
+    }
     function drawMini(t) {
       const w = vizMini.width / (Math.min(window.devicePixelRatio || 1, 2)), h = 54;
       vizMiniCtx.clearRect(0, 0, w, h);
@@ -1599,6 +1698,52 @@
       $("clock").textContent = now.toLocaleTimeString(undefined, { hour12: !settings.clock24 });
     }
     setInterval(updateClock, 1000);
+
+    /* Sleep timer */
+    let sleepTimer = null, sleepEndAt = 0, sleepTick = null;
+    function setSleepTimer(mins) {
+      if (sleepTimer) { clearTimeout(sleepTimer); sleepTimer = null; }
+      if (sleepTick) { clearInterval(sleepTick); sleepTick = null; }
+      $("sleep-remaining").textContent = "";
+      if (!(mins > 0)) { toast("sleep timer off"); return; }
+      sleepEndAt = Date.now() + mins * 60000;
+      const update = () => {
+        const left = Math.max(0, sleepEndAt - Date.now());
+        $("sleep-remaining").textContent = left > 0 ? `-${Math.ceil(left / 60000)}m` : "";
+      };
+      update(); sleepTick = setInterval(update, 20000);
+      sleepTimer = setTimeout(() => {
+        sleepTimer = null; if (sleepTick) { clearInterval(sleepTick); sleepTick = null; }
+        $("sleep-remaining").textContent = ""; $("set-sleep").value = "0";
+        if (!audio.paused) { toast("sleep timer — fading out…"); fadeOutThen(() => pauseAudio()); }
+        else toast("sleep timer elapsed");
+      }, mins * 60000);
+      toast(`sleep timer set — <b>${mins} min</b>`);
+    }
+
+    /* Alarm — clock radio */
+    let alarmFiredKey = "";
+    function renderAlarmStations() {
+      const sel = $("set-alarm-station"); if (!sel) return;
+      const cur = settings.alarmStation || "";
+      sel.innerHTML = `<option value="">first favorite</option>` + favorites.map(f =>
+        `<option value="${escapeHtml(f.stationuuid)}"${f.stationuuid === cur ? " selected" : ""}>${escapeHtml(f.name || "unnamed")}</option>`).join("");
+    }
+    function checkAlarm() {
+      if (!settings.alarmOn || !settings.alarmTime) return;
+      const now = new Date();
+      const hm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+      if (hm !== settings.alarmTime) return;
+      const key = now.toDateString() + " " + settings.alarmTime;
+      if (alarmFiredKey === key) return;
+      alarmFiredKey = key;
+      const st = favorites.find(f => f.stationuuid === settings.alarmStation) || favorites[0];
+      if (!st) { toast("⏰ alarm — no favorite stations to play"); return; }
+      showView("radio");
+      playFavorite(st);
+      toast(`⏰ alarm — waking you with <b>${escapeHtml(st.name || "radio")}</b>`);
+    }
+    setInterval(checkAlarm, 20000);
 
     /* Keyboard */
     $("keys-close").addEventListener("click", () => $("keys-modal").classList.remove("open"));

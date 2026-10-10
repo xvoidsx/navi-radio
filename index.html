@@ -774,7 +774,6 @@
             </div>
             <div class="setting-card">
               <h3>app</h3>
-              <div class="setting-row"><span id="install-status">checking…</span><button class="btn accent" id="install-btn">install navi radio webapp</button></div>
               <div class="setting-row"><span>version</span><span style="color:var(--dim);font-size:10px">0.12 · switch-proof metadata</span></div>
             </div>
             <div class="setting-card">
@@ -2452,54 +2451,10 @@
     const __sharedStation = new URLSearchParams(location.search).get("station");
     searchRadio().then(() => { if (__sharedStation) tuneSharedStation(__sharedStation); });
 
-    /* PWA — service worker */
+    /* PWA — service worker (kept for the hosted web version) */
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
       navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW failed:", e));
     }
-
-    /* PWA — install flow */
-    let deferredInstall = null;
-    const installBtn = $("install-btn"), installStatus = $("install-status");
-    function isStandalone() {
-      return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-    }
-    function updateInstallUI() {
-      if (!installBtn) return;
-      if (isStandalone()) {
-        installStatus.textContent = "installed ✓";
-        installBtn.textContent = "✓ installed";
-        installBtn.disabled = true;
-      } else if (deferredInstall) {
-        installStatus.textContent = "ready to install";
-        installBtn.textContent = "install navi radio webapp";
-        installBtn.disabled = false;
-      } else {
-        installStatus.textContent = "checking…";
-        installBtn.textContent = "install navi radio webapp";
-        installBtn.disabled = false;
-      }
-    }
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredInstall = e;
-      updateInstallUI();
-    });
-    window.addEventListener("appinstalled", () => {
-      deferredInstall = null;
-      updateInstallUI();
-      toast("navi radio <b>installed</b>");
-    });
-    if (installBtn) installBtn.addEventListener("click", async () => {
-      if (isStandalone()) return;
-      if (deferredInstall) {
-        deferredInstall.prompt();
-        try { await deferredInstall.userChoice; } catch {}
-        deferredInstall = null;
-        updateInstallUI();
-      }
-    });
-    try { window.matchMedia("(display-mode: standalone)").addEventListener("change", updateInstallUI); } catch {}
-    updateInstallUI();
   </script>
   <script>
   // navi-radio Electron bridge — native filesystem access.

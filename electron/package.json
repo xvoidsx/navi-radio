@@ -1,0 +1,39 @@
+{
+  "name": "navi-radio",
+  "version": "1.0.0",
+  "description": "navi-radio \u2014 xvoidsx internet radio + local music",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --linux deb"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "org.xvoidsx.navi-radio",
+    "productName": "navi-radio",
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "../icons",
+      "maintainer": "xvoidsx <hello@xvoidsx.org>"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "../index.html",
+      "../icons/**/*"
+    ]
+  },
+  "keywords": [],
+  "author": {
+    "name": "xvoidsx",
+    "email": "hello@xvoidsx.org"
+  },
+  "license": "ISC",
+  "homepage": "https://xvoidsx.org"
+}

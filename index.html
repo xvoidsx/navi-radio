@@ -2501,5 +2501,72 @@
     try { window.matchMedia("(display-mode: standalone)").addEventListener("change", updateInstallUI); } catch {}
     updateInstallUI();
   </script>
+  <script>
+  // navi-radio Electron bridge — native filesystem access.
+  // Only activates when running inside the Electron app (window.naviRadioNative).
+  // Harmless in browsers: the bridge object won't exist, so this is a no-op.
+  (function() {
+    if (!window.naviRadioNative || !window.naviRadioNative.isElectron) return;
+
+    // Override the directory picker to use Electron's native dialog
+    const origChoose = window.chooseMusicDirectory;
+    window.chooseMusicDirectory = async function() {
+      try {
+        const result = await window.naviRadioNative.pickMusicDir();
+        if (!result) return; // user cancelled
+        const dirName = result.dir.split('/').pop() || result.dir;
+        // Build musicFiles in the shape the UI expects.
+        // file.getFile() returns a File-like; we fake it via data URL fetch.
+        musicFiles = result.files.map(fp => {
+          const name = fp.split('/').pop() || fp;
+          return {
+            name: name,
+            path: fp,
+            size: 0,
+            lastModified: 0,
+            nativePath: fp,
+            file: {
+              getFile: async () => {
+                const dataUrl = await window.naviRadioNative.readFile(fp);
+                const res = await fetch(dataUrl);
+                const blob = await res.blob();
+                // File with name so parseTrackName etc. work
+                return new File([blob], name, { type: blob.type });
+              }
+            }
+          };
+        });
+        musicDirName = dirName;
+        musicNeedsGrant = false;
+        sortMusic();
+        musicCount.textContent = `${musicFiles.length} file${musicFiles.length === 1 ? "" : "s"}`;
+        const navCount = document.getElementById("nav-music-count");
+        if (navCount) navCount.textContent = musicFiles.length || "";
+        updateMusicDirUI(); renderMusic();
+        toast(`<b>${musicFiles.length}</b> audio files loaded`);
+        setStatus("READY");
+        try { localStorage.setItem("navi-radio-musicdir-name", dirName); } catch {}
+      } catch (e) {
+        console.error(e);
+        toast("could not open music directory");
+      }
+    };
+
+    // Persistence: Electron remembers the dir path (not a FileSystem handle)
+    const origRestore = window.restoreMusicDir;
+    window.restoreMusicDir = async function() {
+      updateMusicDirUI();
+      // Re-scan the last dir on startup if we have it stored
+      try {
+        const lastDir = localStorage.getItem("navi-radio-electron-musicdir");
+        if (lastDir) {
+          const result = await window.naviRadioNative.pickMusicDirSilent?.(lastDir);
+          // (silent re-scan not implemented yet — user re-picks for now)
+        }
+      } catch {}
+      updateMusicDirUI(); renderMusic();
+    };
+  })();
+  </script>
 </body>
 </html>

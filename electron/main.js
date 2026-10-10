@@ -19,7 +19,8 @@ function createWindow() {
   });
 
   // load the local index.html (same file that ships to Pages)
-  mainWindow.loadFile(path.join(__dirname, '../index.html'));
+  // packaged at the app root via the build's from/to file mapping
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
 app.whenReady().then(createWindow);

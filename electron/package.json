@@ -25,9 +25,20 @@
     "files": [
       "main.js",
       "preload.js",
-      "../index.html",
-      "../icons/**/*"
-    ]
+      "package.json",
+      {
+        "from": "..",
+        "to": ".",
+        "filter": [
+          "index.html"
+        ]
+      },
+      {
+        "from": "../icons",
+        "to": "icons"
+      }
+    ],
+    "afterPack": "./scripts/afterPack.js"
   },
   "keywords": [],
   "author": {

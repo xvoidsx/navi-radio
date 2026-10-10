@@ -5,6 +5,7 @@ on:
       - 'v*'
 permissions:
   contents: write
+  issues: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,14 +21,21 @@ jobs:
           cache-dependency-path: electron/package-lock.json
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Debug environment
+        run: |
+          echo "=== PWD ==="; pwd
+          echo "=== ls ==="; ls -la
+          echo "=== node_modules/.bin ==="; ls node_modules/.bin/ | head -10
+          echo "=== package.json build config ==="; python3 -c "import json; print(json.dumps(json.load(open('package.json'))['build'], indent=1))"
       - name: Build deb
-        run: npx electron-builder --linux deb
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: build
+        run: npx electron-builder --linux deb 2>&1 | tee /tmp/build.log; test ${PIPESTATUS[0]} -eq 0
       - name: Get version from tag
         id: version
+        if: success()
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       - name: Create release
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           files: electron/dist/navi-radio_*_amd64.deb
@@ -35,3 +43,17 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+      - name: Report failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let log = 'no log captured';
+            try { log = fs.readFileSync('/tmp/build.log', 'utf8').slice(-4000); } catch(e) {}
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'build-deb failed on ' + context.ref,
+              body: '```\n' + log + '\n```'
+            });
